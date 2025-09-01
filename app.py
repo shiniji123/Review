@@ -286,21 +286,50 @@ class GoogleSheetsStorage:
         self.ws_approved.update("A1", [HEADERS] + self._dicts_to_rows(approved))
 
 
-# Select backend from secrets (default to local JSON)
+# =========================
+# Select backend + caching
+# =========================
 BACKEND = st.secrets.get("STORAGE_BACKEND", "local").lower()
 
-if BACKEND == "gsheets":
-    STORAGE = GoogleSheetsStorage()
-else:
-    STORAGE = LocalJSONStorage(DATA_FILE)
+@st.cache_resource
+def get_storage():
+    # สร้าง client/เชื่อมชีต เพียงครั้งเดียวต่อ session
+    if BACKEND == "gsheets":
+        return GoogleSheetsStorage()
+    return LocalJSONStorage(DATA_FILE)
 
+@st.cache_data(ttl=10)  # ปรับเป็น 30 ก็ได้ ถ้ามีการรีรันบ่อย
+def _cached_load_data(data_version: int):
+    storage = get_storage()
+    return storage.load_data()
 
 def load_data() -> Dict:
-    return STORAGE.load_data()
-
+    """
+    อ่านข้อมูลด้วย cache (ลดจำนวน read)
+    + ถ้าโดน 429 (quota) ให้ fallback เป็น snapshot ล่าสุดใน session
+    """
+    ver = st.session_state.get("data_version", 0)
+    try:
+        data = _cached_load_data(ver)
+        st.session_state["last_data"] = data  # เก็บ snapshot สำรอง
+        return data
+    except Exception as e:
+        msg = str(e).lower()
+        if any(k in msg for k in ["quota exceeded", "429", "rate limit", "per minute"]):
+            st.warning("พบข้อจำกัดโควต้า Google Sheets ชั่วคราว — กำลังแสดงข้อมูลล่าสุดจากแคช")
+            return st.session_state.get("last_data", {"approved_reviews": [], "pending_reviews": []})
+        raise
 
 def save_data(data: Dict) -> None:
-    STORAGE.save_data(data)
+    storage = get_storage()
+    storage.save_data(data)
+    # บังคับ invalidate cache เมื่อเขียนเสร็จ
+    st.session_state["data_version"] = st.session_state.get("data_version", 0) + 1
+    try:
+        _cached_load_data.clear()
+    except Exception:
+        pass
+
 
 
 # -----------------------------
@@ -734,10 +763,17 @@ def page_admin(data: Dict):
 # Main
 # -----------------------------
 
-def header_bar():
-    data = load_data()
+def header_bar(pending_count: Optional[int] = None, approved_count: Optional[int] = None):
+    # ถ้าไม่ส่งมาก็อ่านเองครั้งเดียว (ยัง backward-compatible)
+    if pending_count is None or approved_count is None:
+        _data = load_data()
+        pending_count = len(_data.get('pending_reviews', []))
+        approved_count = len([r for r in _data.get('approved_reviews', []) if r.get('status') == 'approved'])
+
     st.title(APP_TITLE)
-    st.caption(f"คิวรอตรวจ: {len(data.get('pending_reviews', []))} | อนุมัติแล้วสะสม: {len(data.get('approved_reviews', []))} — เก็บในไฟล์ data/data.json")
+    st.caption(
+        f"คิวรอตรวจ: {pending_count} | อนุมัติแล้วสะสม: {approved_count} — เก็บในไฟล์ local หรือ Google Sheets (ตาม backend)"
+    )
     st.divider()
 
 
