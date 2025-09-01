@@ -1,0 +1,35 @@
+{
+  "approved_reviews": [
+    {
+      "id": "e2a2ab54-e191-4095-a8f6-51566592b234",
+      "faculty": "SCI",
+      "faculty_name": "คณะวิทยาศาสตร์",
+      "department": "SCAS",
+      "department_name": "สาขาวิชาคณิตศาสตร์ประกันภัย (นานาชาติ)",
+      "year": 2,
+      "course_code": "2108201",
+      "course_name": "Probability and Statistics",
+      "rating": 3,
+      "text": "สุดยอดด",
+      "author": "student1",
+      "created_at": "2025-09-01T23:26:37",
+      "status": "approved"
+    },
+    {
+      "id": "de4e1128-1572-4bb2-a2c8-f421d6089ff2",
+      "faculty": "SCI",
+      "faculty_name": "คณะวิทยาศาสตร์",
+      "department": "SCMA",
+      "department_name": "สาขาวิชาคณิตศาสตร์",
+      "year": 1,
+      "course_code": "2101101",
+      "course_name": "Calculus I",
+      "rating": 5,
+      "text": "Good",
+      "author": "student1",
+      "created_at": "2025-09-02T00:25:46",
+      "status": "approved"
+    }
+  ],
+  "pending_reviews": []
+}
