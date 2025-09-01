@@ -58,7 +58,7 @@ USERS: Dict[str, Dict[str, str]] = {
 # Faculty / Department / Course Catalog (Prototype)
 # ==============================================
 FACULTIES: Dict[str, Dict] = {
-    "SCI": {
+    "SC": {
         "name": "คณะวิทยาศาสตร์",
         "departments": {
             "SCMA": "สาขาวิชาคณิตศาสตร์",
@@ -76,14 +76,14 @@ FACULTIES: Dict[str, Dict] = {
 
 # COURSE_CATALOG[faculty_code][dept_code][year] = list of course dicts
 COURSE_CATALOG: Dict[str, Dict[str, Dict[int, List[Dict]]]] = {
-    "SCI": {
+    "SC": {
         "SCMA": {
             1: [
                 {"code": "2101101", "name": "Calculus I", "desc_th": "ลิมิต อนุพันธ์ ฟังก์ชันตัวแปรเดียว", "desc_en": "Limits and derivatives of single-variable functions.", "credit": 3, "prereq": None},
             ],
             2: [
                 {"code": "2101201", "name": "Calculus II", "desc_th": "อินทิกรัล อนุกรมอนันต์ เทคนิคการอินทิเกรต", "desc_en": "Integration techniques and infinite series.", "credit": 3, "prereq": "2101101"},
-                {"code": "2102201", "name": "ELECT ENG MATH I", "desc_th": "สมการเชิงอนุพันธ์อันดับหนึ่งและสูงกว่า อนุกรมผลต่าง สมการเชิงอนุพันธ์ย่อย ฟูริเยร์ซีรีส์/ทรานส์ฟอร์ม ลาปลาซทรานส์ฟอร์ม Z-transform ปัญหาค่าเริ่มต้น/ขอบเขต ประยุกต์ในวิศวกรรมไฟฟ้า", "desc_en": "First- and higher-order ODEs; difference equations; Fourier series/transform; Laplace; Z-transform; PDEs; boundary-value problems; EE applications.", "credit": 3, "prereq": "2301108"},
+                {"code": "2102201", "name": "Abstract Algebra", "desc_th": "สมการเชิงอนุพันธ์อันดับหนึ่งและสูงกว่า อนุกรมผลต่าง สมการเชิงอนุพันธ์ย่อย ฟูริเยร์ซีรีส์/ทรานส์ฟอร์ม ลาปลาซทรานส์ฟอร์ม Z-transform ปัญหาค่าเริ่มต้น/ขอบเขต ประยุกต์ในวิศวกรรมไฟฟ้า", "desc_en": "First- and higher-order ODEs; difference equations; Fourier series/transform; Laplace; Z-transform; PDEs; boundary-value problems; EE applications.", "credit": 3, "prereq": "2301108"},
             ],
             3: [
                 {"code": "2102301", "name": "Linear Algebra", "desc_th": "เวกเตอร์ เมทริกซ์ พีชคณิตเชิงเส้นประยุกต์", "desc_en": "Vectors, matrices, eigenvalues/eigenvectors; applications.", "credit": 3, "prereq": None},
