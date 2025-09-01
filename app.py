@@ -166,25 +166,142 @@ def flatten_catalog() -> List[Dict]:
 ALL_COURSES = flatten_catalog()
 
 # -----------------------------
-# Storage helpers
+# Storage helpers (Local JSON or Google Sheets via Streamlit Cloud)
 # -----------------------------
 
-def ensure_data_file() -> None:
-    if not os.path.exists(DATA_FILE):
-        os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump({"approved_reviews": [], "pending_reviews": []}, f, ensure_ascii=False, indent=2)
+# Columns schema used for cloud storage
+HEADERS = [
+    "id","faculty","faculty_name","department","department_name","year",
+    "course_code","course_name","rating","text","author","created_at","status"
+]
+
+class LocalJSONStorage:
+    def __init__(self, path: str):
+        self.path = path
+        self._ensure()
+
+    def _ensure(self):
+        if not os.path.exists(self.path):
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            with open(self.path, "w", encoding="utf-8") as f:
+                json.dump({"approved_reviews": [], "pending_reviews": []}, f, ensure_ascii=False, indent=2)
+
+    def load_data(self) -> Dict:
+        with open(self.path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def save_data(self, data: Dict) -> None:
+        with open(self.path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+class GoogleSheetsStorage:
+    """
+    Use Google Sheets as a simple cloud DB.
+    Requirements:
+      - Add to requirements.txt: gspread==6.1.2 google-auth==2.35.0
+      - In Streamlit Cloud, set secrets:
+          STORAGE_BACKEND="gsheets"
+          SPREADSHEET_KEY="<your_google_sheet_id>"
+          [gcp_service_account]
+          type="service_account"
+          project_id="..."
+          private_key_id="..."
+          private_key="-----BEGIN PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----
+"
+          client_email="<sa-name>@<project>.iam.gserviceaccount.com"
+          client_id="..."
+          token_uri="https://oauth2.googleapis.com/token"
+      - Share the Google Sheet with the service account email (Editor).
+    """
+    def __init__(self):
+        import gspread  # imported lazily to avoid local env errors
+        svc_info = dict(st.secrets.get("gcp_service_account", {}))
+        if not svc_info:
+            raise RuntimeError("Missing gcp_service_account in secrets")
+        self.spreadsheet_key = st.secrets.get("SPREADSHEET_KEY")
+        if not self.spreadsheet_key:
+            raise RuntimeError("Missing SPREADSHEET_KEY in secrets")
+        self.gc = gspread.service_account_from_dict(svc_info)
+        self.ss = self.gc.open_by_key(self.spreadsheet_key)
+        # Ensure worksheets
+        self.ws_pending = self._get_or_create_ws("pending_reviews")
+        self.ws_approved = self._get_or_create_ws("approved_reviews")
+        self._ensure_headers(self.ws_pending)
+        self._ensure_headers(self.ws_approved)
+
+    def _get_or_create_ws(self, title: str):
+        try:
+            return self.ss.worksheet(title)
+        except Exception:
+            return self.ss.add_worksheet(title=title, rows=2000, cols=len(HEADERS))
+
+    def _ensure_headers(self, ws):
+        hdr = ws.row_values(1)
+        if hdr != HEADERS:
+            ws.clear()
+            ws.update("A1", [HEADERS])
+
+    def _rows_to_dicts(self, rows: List[List[str]]) -> List[Dict]:
+        out: List[Dict] = []
+        for r in rows:
+            rec = {HEADERS[i]: (r[i] if i < len(r) else "") for i in range(len(HEADERS))}
+            # normalize types
+            try:
+                rec["year"] = int(rec.get("year") or 0)
+            except Exception:
+                rec["year"] = 0
+            try:
+                rec["rating"] = int(rec.get("rating") or 0)
+            except Exception:
+                rec["rating"] = 0
+            out.append(rec)
+        return out
+
+    def _dicts_to_rows(self, dicts: List[Dict]) -> List[List[str]]:
+        rows: List[List[str]] = []
+        for d in dicts:
+            rows.append([str(d.get(k, "")) for k in HEADERS])
+        return rows
+
+    def load_data(self) -> Dict:
+        # Fetch all records (after header)
+        pr = self.ws_pending.get_all_values()
+        ar = self.ws_approved.get_all_values()
+        pending = self._rows_to_dicts(pr[1:]) if len(pr) > 1 else []
+        approved = self._rows_to_dicts(ar[1:]) if len(ar) > 1 else []
+        return {"pending_reviews": pending, "approved_reviews": approved}
+
+    def save_data(self, data: Dict) -> None:
+        # Rewrite both sheets entirely (simple + safe for prototype)
+        pending = data.get("pending_reviews", [])
+        approved = data.get("approved_reviews", [])
+        # write pending
+        self.ws_pending.clear()
+        self.ws_pending.update("A1", [HEADERS] + self._dicts_to_rows(pending))
+        # write approved
+        self.ws_approved.clear()
+        self.ws_approved.update("A1", [HEADERS] + self._dicts_to_rows(approved))
+
+
+# Select backend from secrets (default to local JSON)
+BACKEND = st.secrets.get("STORAGE_BACKEND", "local").lower()
+
+if BACKEND == "gsheets":
+    STORAGE = GoogleSheetsStorage()
+else:
+    STORAGE = LocalJSONStorage(DATA_FILE)
 
 
 def load_data() -> Dict:
-    ensure_data_file()
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return STORAGE.load_data()
 
 
 def save_data(data: Dict) -> None:
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    STORAGE.save_data(data)
+
 
 # -----------------------------
 # Utilities
