@@ -670,6 +670,9 @@ def do_login_form():
                             st.error("รหัสผ่านไม่ถูกต้อง")
 
     # ===== Sign up Tab =====
+    from textwrap import dedent  # ใส่ไว้ด้านบนของไฟล์ ถ้ายังไม่ได้ import
+
+    # ===== Sign up Tab =====
     with tabs[1]:
         email = st.text_input("อีเมลนักศึกษา (@%s)" % ALLOWED_EMAIL_DOMAIN, key="auth_signup_email")
         pw1 = st.text_input("รหัสผ่าน", type="password", key="auth_signup_pw1")
@@ -685,28 +688,46 @@ def do_login_form():
             elif find_user_by_email(email):
                 st.error("อีเมลนี้มีผู้ใช้งานแล้ว")
             else:
-                salt = make_salt();
+                salt = make_salt()
                 pw_hash = hash_password(pw1, salt)
-                user = {"email": email, "password_salt": salt, "password_hash": pw_hash, "role": "student",
-                        "display": (display or email), "is_verified": False,
-                        "created_at": datetime.now().isoformat(timespec="seconds")}
+                user = {
+                    "email": email,
+                    "password_salt": salt,
+                    "password_hash": pw_hash,
+                    "role": "student",
+                    "display": (display or email),
+                    "is_verified": False,
+                    "created_at": datetime.now().isoformat(timespec="seconds"),
+                }
                 upsert_user(user)
-                # send verify email
+
+                # สร้างโทเคนและลิงก์ยืนยัน
                 tok = add_token(email, "verify", "")
                 link = make_link_with_param("verify", tok["token"])
+
+                # เนื้อหาอีเมล (ปิดสตริงครบ ใช้ลิงก์ตัวแปร link)
                 body = dedent(f"""\
                 สวัสดี {display or email},
 
                 กรุณาคลิกลิงก์ด้านล่างเพื่อยืนยันอีเมลสำหรับเข้าใช้งานระบบรีวิวรายวิชา:
-                {APP_BASE_URL}/?verify={token}
+                {link}
 
                 หากคุณไม่ได้ส่งคำขอนี้ โปรดละเว้นอีเมลฉบับนี้
                 — MU Course Reviews
                 """)
 
-หากไม่ได้ทำรายการ
-โปรดละเลยอีเมลนี้
-"
+                ok = send_email(
+                    to=email,
+                    subject="ยืนยันอีเมลสำหรับเข้าใช้งาน — MU Course Reviews",
+                    body=body,
+                )
+                if ok:
+                    st.success("สมัครเสร็จแล้ว! โปรดตรวจอีเมลเพื่อกดยืนยัน")
+                else:
+                    st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ยืนยันชั่วคราวด้านล่างได้เลย")
+                    st.code(link)
+
+
 sent = MAILER.send(email, "ยืนยันอีเมลสำหรับลงทะเบียน", body)
 if sent:
     st.success("สมัครเสร็จแล้ว! โปรดตรวจอีเมลเพื่อกดยืนยันก่อนเข้าสู่ระบบ")
@@ -744,14 +765,15 @@ with tabs[2]:
             else:
                 tok = add_token(u["email"], "reset", "")
                 link = make_link_with_param("reset", tok["token"])
-                body = f"สวัสดี {u.get('display', u['email'])},
+                body = dedent(f"""\
+                สวัสดี {display or email},
 
-คลิกลิงก์นี้เพื่อตั้งรหัสผ่านใหม่:
-{link}
+                ตั้งรหัสผ่านใหม่ได้ที่ลิงก์ต่อไปนี้:
+                {APP_BASE_URL}/?reset={token}
 
-หากไม่ได้ทำรายการ
-โปรดละเลยอีเมลนี้
-"
+                หากคุณไม่ได้ร้องขอ โปรดละเว้นอีเมลฉบับนี้
+                — MU Course Reviews
+                """)
 sent = MAILER.send(u["email"], "ลิงก์ตั้งรหัสผ่านใหม่", body)
 if sent:
     st.success("ส่งลิงก์รีเซ็ตรหัสผ่านแล้ว โปรดตรวจอีเมลของคุณ")
