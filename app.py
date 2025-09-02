@@ -668,7 +668,7 @@ def do_login_form():
                     u = find_user_by_email(email_or_admin)
                     if not u:
                         st.error("ไม่พบบัญชีผู้ใช้ — โปรดสมัครสมาชิกก่อน")
-                        elif not u.get("is_verified"):
+                    elif not u.get("is_verified"):
                         st.warning("บัญชียังไม่ยืนยันอีเมล — โปรดตรวจกล่องจดหมายของคุณ")
                         if st.button("ส่งอีเมลยืนยันอีกครั้ง", key="auth_login_resend"):
                             tok = add_token(u["email"], "verify", "")
