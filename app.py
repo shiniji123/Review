@@ -6,6 +6,7 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
+from textwrap import dedent
 
 """
 All-in-One Streamlit App (Student + Admin)
@@ -693,11 +694,15 @@ def do_login_form():
                 # send verify email
                 tok = add_token(email, "verify", "")
                 link = make_link_with_param("verify", tok["token"])
-                body = f"สวัสดี {display or email},
+                body = dedent(f"""\
+                สวัสดี {display or email},
 
+                กรุณาคลิกลิงก์ด้านล่างเพื่อยืนยันอีเมลสำหรับเข้าใช้งานระบบรีวิวรายวิชา:
+                {APP_BASE_URL}/?verify={token}
 
-โปรดยืนยันอีเมลของคุณโดยคลิกลิงก์:
-{link}
+                หากคุณไม่ได้ส่งคำขอนี้ โปรดละเว้นอีเมลฉบับนี้
+                — MU Course Reviews
+                """)
 
 หากไม่ได้ทำรายการ
 โปรดละเลยอีเมลนี้
