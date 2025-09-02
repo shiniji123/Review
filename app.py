@@ -1370,28 +1370,32 @@ def header_bar():
 import smtplib, ssl
 from email.message import EmailMessage
 
+import smtplib, ssl
+from email.message import EmailMessage
+
 def send_email(to: str, subject: str, body: str) -> bool:
-    """
-    ส่งอีเมลผ่าน SMTP ตามค่าใน st.secrets
-    รองรับ STARTTLS (587) และสลับไปใช้ SSL (465) ได้ถ้าตั้ง SMTP_SSL=true
-    """
     host = st.secrets.get("SMTP_HOST")
-    port = int(st.secrets.get("SMTP_PORT", "587"))
+    port = st.secrets.get("SMTP_PORT")
     user = st.secrets.get("SMTP_USER")
     pwd  = st.secrets.get("SMTP_PASS")
-    sender = st.secrets.get("SMTP_SENDER", user)
+    sender = st.secrets.get("SMTP_SENDER") or user
     sender_name = st.secrets.get("SMTP_SENDER_NAME", "MU Course Reviews")
     use_ssl = str(st.secrets.get("SMTP_SSL", "false")).lower() in ("1","true","yes")
 
-    if not all([host, port, user, pwd, sender]):
-        st.error("SMTP secrets ไม่ครบ (ตรวจ SMTP_HOST/PORT/USER/PASS/SENDER)")
+    # ชี้ชัดว่าคีย์ไหนหาย
+    missing = [k for k,v in {
+        "SMTP_HOST": host, "SMTP_PORT": port, "SMTP_USER": user,
+        "SMTP_PASS": pwd, "SMTP_SENDER": sender
+    }.items() if not v]
+    if missing:
+        st.error("SMTP secrets ไม่ครบ: " + ", ".join(missing))
         return False
 
+    port = int(port)  # แปลงตรงนี้หลังเช็กครบ
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = f"{sender_name} <{sender}>"
     msg["To"] = to
-    # ถ้าต้องการให้ reply กลับไปอีเมลอื่น (ทางเลือก)
     reply_to = st.secrets.get("REPLY_TO")
     if reply_to:
         msg["Reply-To"] = reply_to
@@ -1399,12 +1403,10 @@ def send_email(to: str, subject: str, body: str) -> bool:
 
     try:
         if use_ssl:
-            # โหมด SSL (มักใช้พอร์ต 465)
             with smtplib.SMTP_SSL(host, port, timeout=20) as s:
                 s.login(user, pwd)
                 s.send_message(msg)
         else:
-            # โหมด STARTTLS (พอร์ต 587)
             with smtplib.SMTP(host, port, timeout=20) as s:
                 s.starttls(context=ssl.create_default_context())
                 s.login(user, pwd)
@@ -1413,6 +1415,7 @@ def send_email(to: str, subject: str, body: str) -> bool:
     except Exception as e:
         st.error(f"SMTP error: {e}")
         return False
+
 
 
 
