@@ -682,7 +682,7 @@ def do_login_form():
                                 st.markdown(f"[คลิกเพื่อยืนยันบัญชี]({link})")
                                 st.code(link)
 
-                else:
+                    else:
                         if verify_password(pw, u.get("password_salt", ""), u.get("password_hash", "")):
                             st.session_state["auth"] = {"email": u["email"], "username": u["email"],
                                                         "role": u.get("role", "student"),
@@ -691,6 +691,8 @@ def do_login_form():
                             st.rerun()
                         else:
                             st.error("รหัสผ่านไม่ถูกต้อง")
+
+    from textwrap import dedent  # ไว้บนไฟล์ ถ้ายังไม่ได้ import
 
     # ===== Sign up Tab =====
     with tabs[1]:
