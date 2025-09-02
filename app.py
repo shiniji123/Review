@@ -734,50 +734,80 @@ def do_login_form():
 
 
 # ===== Forgot password Tab =====
+# ===== Forgot Password Tab =====
 with tabs[2]:
+    # ถ้ามีโทเคนจากพารามิเตอร์ ?reset=... ให้เข้าสู่หน้าเปลี่ยนรหัสทันที
     if reset_token:
         st.info("ตั้งรหัสผ่านใหม่สำหรับโทเคนรีเซ็ต")
         npw1 = st.text_input("รหัสผ่านใหม่", type="password", key="auth_reset_pw1")
         npw2 = st.text_input("ยืนยันรหัสผ่านใหม่", type="password", key="auth_reset_pw2")
-        if st.button("ยืนยันเปลี่ยนรหัส", key="auth_reset_btn"):
-            used = consume_token(reset_token, "reset")
-            if not used:
-                st.error("โทเคนไม่ถูกต้องหรือถูกใช้ไปแล้ว")
+
+        if st.button("ยืนยันการตั้งรหัสผ่านใหม่", key="auth_reset_submit"):
+            if not npw1 or len(npw1) < 6:
+                st.error("รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร")
+            elif npw1 != npw2:
+                st.error("รหัสผ่านยืนยันไม่ตรงกัน")
             else:
-                u = find_user_by_email(used.get("email", ""))
-                if not u:
-                    st.error("ไม่พบบัญชีผู้ใช้")
-                elif npw1 and len(npw1) >= 6 and npw1 == npw2:
-                    u["password_salt"] = make_salt()
-                    u["password_hash"] = hash_password(npw1, u["password_salt"])
-                    upsert_user(u)
-                    st.success("เปลี่ยนรหัสผ่านเรียบร้อย — กรุณาเข้าสู่ระบบ")
+                # ดึงข้อมูลโทเคนจากที่เก็บ (ใช้ฟังก์ชันที่คุณมีอยู่แล้ว)
+                tok = find_token(reset_token, "reset") if 'find_token' in globals() else get_token(reset_token)
+                if not tok or tok.get("used"):
+                    st.error("โทเคนไม่ถูกต้องหรือถูกใช้ไปแล้ว")
                 else:
-                    st.error("กรุณากรอกรหัสผ่านใหม่ให้ถูกต้อง (อย่างน้อย 6 ตัว และยืนยันให้ตรงกัน)")
+                    u = find_user_by_email(tok["email"])
+                    if not u:
+                        st.error("ไม่พบบัญชีผู้ใช้ที่เกี่ยวข้องกับโทเคน")
+                    else:
+                        salt = make_salt()
+                        pw_hash = hash_password(npw1, salt)
+                        u["password_salt"] = salt
+                        u["password_hash"] = pw_hash
+                        upsert_user(u)
+                        # ทำเครื่องหมายว่าโทเคนถูกใช้แล้ว ถ้ามีฟังก์ชัน
+                        if 'mark_token_used' in globals():
+                            mark_token_used(reset_token)
+                        st.success("ตั้งรหัสผ่านใหม่สำเร็จ! โปรดเข้าสู่ระบบอีกครั้ง")
+                        # ล้าง query param ?reset=... ออกเพื่อกันรีเพลย์
+                        try:
+                            st.query_params.clear()
+                        except Exception:
+                            st.experimental_set_query_params()  # สำหรับ Streamlit รุ่นเก่า
+                        st.rerun()
     else:
-        email_f = st.text_input("อีเมลนักศึกษา", key="auth_forgot_email")
-        if st.button("ส่งลิงก์ตั้งรหัสผ่านใหม่", key="auth_forgot_btn"):
-            u = find_user_by_email(email_f)
-            if not u:
-                st.error("ไม่พบบัญชีผู้ใช้อีเมลนี้")
+        # โหมดขอลิงก์รีเซ็ต
+        reset_email = st.text_input(
+            "อีเมลนักศึกษา (@%s)" % ALLOWED_EMAIL_DOMAIN,
+            key="auth_reset_email"
+        )
+        if st.button("ส่งลิงก์รีเซ็ตรหัสผ่าน", key="auth_reset_btn"):
+            if not reset_email or not reset_email.lower().endswith("@" + ALLOWED_EMAIL_DOMAIN):
+                st.error("ต้องใช้อีเมล @%s เท่านั้น" % ALLOWED_EMAIL_DOMAIN)
+            elif not find_user_by_email(reset_email):
+                st.error("ไม่พบบัญชีผู้ใช้สำหรับอีเมลนี้")
             else:
-                tok = add_token(u["email"], "reset", "")
+                tok = add_token(reset_email, "reset", "")
                 link = make_link_with_param("reset", tok["token"])
+
+                from textwrap import dedent
                 body = dedent(f"""\
-                สวัสดี {display or email},
+                สวัสดี {reset_email},
 
                 ตั้งรหัสผ่านใหม่ได้ที่ลิงก์ต่อไปนี้:
-                {APP_BASE_URL}/?reset={token}
+                {link}
 
                 หากคุณไม่ได้ร้องขอ โปรดละเว้นอีเมลฉบับนี้
                 — MU Course Reviews
                 """)
-sent = MAILER.send(u["email"], "ลิงก์ตั้งรหัสผ่านใหม่", body)
-if sent:
-    st.success("ส่งลิงก์รีเซ็ตรหัสผ่านแล้ว โปรดตรวจอีเมลของคุณ")
-else:
-    st.warning("ส่งอีเมลไม่สำเร็จ — คุณสามารถคลิกลิงก์รีเซ็ตได้จากในหน้านี้: ")
-    st.markdown(f"[ตั้งรหัสผ่านใหม่]({link})")
+
+                # ส่งอีเมล (เลือกตามที่คุณใช้อยู่)
+                ok = MAILER.send(reset_email, "ลิงก์รีเซ็ตรหัสผ่าน — MU Course Reviews", body) \
+                     if 'MAILER' in globals() else send_email(to=reset_email, subject="ลิงก์รีเซ็ตรหัสผ่าน — MU Course Reviews", body=body)
+
+                if ok:
+                    st.success("ส่งลิงก์รีเซ็ตไปที่อีเมลแล้ว โปรดตรวจกล่องจดหมาย")
+                else:
+                    st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ชั่วคราวด้านล่าง")
+                    st.code(link)
+
 
 
 # -----------------------------
