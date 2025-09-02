@@ -668,9 +668,21 @@ def do_login_form():
                     u = find_user_by_email(email_or_admin)
                     if not u:
                         st.error("ไม่พบบัญชีผู้ใช้ — โปรดสมัครสมาชิกก่อน")
-                    elif not u.get("is_verified"):
+                        elif not u.get("is_verified"):
                         st.warning("บัญชียังไม่ยืนยันอีเมล — โปรดตรวจกล่องจดหมายของคุณ")
-                    else:
+                        if st.button("ส่งอีเมลยืนยันอีกครั้ง", key="auth_login_resend"):
+                            tok = add_token(u["email"], "verify", "")
+                            link = make_link_with_param("verify", tok["token"])
+                            body = f"สวัสดี {u.get('display', u['email'])}\n\nกดยืนยันที่ลิงก์นี้:\n{link}\n\n— MU Course Reviews"
+                            ok = send_email(u["email"], "ยืนยันอีเมลสำหรับลงทะเบียน (ส่งใหม่)", body)
+                            if ok:
+                                st.success("ส่งอีเมลยืนยันอีกครั้งแล้ว โปรดตรวจกล่องจดหมาย")
+                            else:
+                                st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ชั่วคราวด้านล่าง")
+                                st.markdown(f"[คลิกเพื่อยืนยันบัญชี]({link})")
+                                st.code(link)
+
+                else:
                         if verify_password(pw, u.get("password_salt", ""), u.get("password_hash", "")):
                             st.session_state["auth"] = {"email": u["email"], "username": u["email"],
                                                         "role": u.get("role", "student"),
@@ -694,45 +706,78 @@ def do_login_form():
                 st.error("รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร")
             elif pw1 != pw2:
                 st.error("รหัสผ่านยืนยันไม่ตรงกัน")
-            elif find_user_by_email(student_email):
-                st.error("อีเมลนี้มีผู้ใช้งานแล้ว")
             else:
+                existing = find_user_by_email(student_email)
+
+                # สร้างค่า hash/salt ไว้ใช้ทั้งสองกรณี (สมัครใหม่ หรือรีเซ็ตผู้ใช้ที่ยังไม่ verify)
                 salt = make_salt()
                 pw_hash = hash_password(pw1, salt)
-                user = {
-                    "email": student_email,
-                    "password_salt": salt,
-                    "password_hash": pw_hash,
-                    "role": "student",
-                    "display": (display or student_email),
-                    "is_verified": False,
-                    "created_at": datetime.now().isoformat(timespec="seconds"),
-                }
-                upsert_user(user)
 
-                # token + link
-                tok = add_token(student_email, "verify", "")
-                link = make_link_with_param("verify", tok["token"])
+                if existing and existing.get("is_verified"):
+                    # กรณีมีผู้ใช้แล้วและยืนยันแล้วจริง
+                    st.error("อีเมลนี้มีผู้ใช้งานแล้ว")
+                elif existing and not existing.get("is_verified"):
+                    # กรณีมีผู้ใช้ แต่ยังไม่ยืนยัน → อัปเดตรหัสผ่านใหม่ + ส่งลิงก์ยืนยันอีกครั้ง
+                    existing["password_salt"] = salt
+                    existing["password_hash"] = pw_hash
+                    # อัปเดตชื่อที่แสดง (ถ้ามี)
+                    if display:
+                        existing["display"] = display
+                    upsert_user(existing)
 
-                body = dedent(f"""\
-                สวัสดี {display or student_email},
+                    tok = add_token(student_email, "verify", "")
+                    link = make_link_with_param("verify", tok["token"])
+                    body = dedent(f"""\
+                    สวัสดี {existing.get('display', student_email)},
 
-                กรุณาคลิกลิงก์ด้านล่างเพื่อยืนยันอีเมลสำหรับเข้าใช้งานระบบรีวิวรายวิชา:
-                {link}
+                    เราได้รับคำขอลงทะเบียนสำหรับอีเมลนี้ ซึ่งยังไม่ได้ยืนยัน
+                    กรุณาคลิกลิงก์ด้านล่างเพื่อยืนยันอีเมล:
+                    {link}
 
-                หากคุณไม่ได้ส่งคำขอนี้ โปรดละเว้นอีเมลฉบับนี้
-                — MU Course Reviews
-                """)
+                    หากคุณไม่ได้ส่งคำขอนี้ โปรดละเว้นอีเมลฉบับนี้
+                    — MU Course Reviews
+                    """)
 
-                # ส่งอีเมล
-                ok = MAILER.send(student_email, "ยืนยันอีเมลสำหรับลงทะเบียน", body) \
-                     if 'MAILER' in globals() else send_email(to=student_email, subject="ยืนยันอีเมลสำหรับลงทะเบียน", body=body)
+                    ok = send_email(student_email, "ยืนยันอีเมลสำหรับลงทะเบียน (ส่งใหม่)", body)
+                    if ok:
+                        st.success("บัญชีนี้ยังไม่ยืนยัน — เราได้ส่งอีเมลยืนยันใหม่ให้แล้ว โปรดตรวจกล่องจดหมาย")
+                    else:
+                        st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ยืนยันชั่วคราวด้านล่างได้เลย")
+                        st.markdown(f"[คลิกเพื่อยืนยันบัญชี]({link})")
+                        st.code(link)
 
-                if ok:
-                    st.success("สมัครเสร็จแล้ว! โปรดตรวจอีเมลเพื่อกดยืนยันก่อนเข้าสู่ระบบ")
                 else:
-                    st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ยืนยันชั่วคราวด้านล่างได้เลย")
-                    st.code(link)
+                    # สมัครใหม่ (ยังไม่เคยมีผู้ใช้)
+                    user = {
+                        "email": student_email,
+                        "password_salt": salt,
+                        "password_hash": pw_hash,
+                        "role": "student",
+                        "display": (display or student_email),
+                        "is_verified": False,
+                        "created_at": datetime.now().isoformat(timespec="seconds"),
+                    }
+                    upsert_user(user)
+
+                    tok = add_token(student_email, "verify", "")
+                    link = make_link_with_param("verify", tok["token"])
+                    body = dedent(f"""\
+                    สวัสดี {display or student_email},
+
+                    กรุณาคลิกลิงก์ด้านล่างเพื่อยืนยันอีเมลสำหรับเข้าใช้งานระบบรีวิวรายวิชา:
+                    {link}
+
+                    หากคุณไม่ได้ส่งคำขอนี้ โปรดละเว้นอีเมลฉบับนี้
+                    — MU Course Reviews
+                    """)
+
+                    ok = send_email(student_email, "ยืนยันอีเมลสำหรับลงทะเบียน", body)
+                    if ok:
+                        st.success("สมัครเสร็จแล้ว! โปรดตรวจอีเมลเพื่อกดยืนยันก่อนเข้าสู่ระบบ")
+                    else:
+                        st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ยืนยันชั่วคราวด้านล่างได้เลย")
+                        st.markdown(f"[คลิกเพื่อยืนยันบัญชี]({link})")
+                        st.code(link)
 
     # ===== Forgot Password Tab =====
     with tabs[2]:
