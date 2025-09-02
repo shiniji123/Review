@@ -1366,6 +1366,55 @@ def header_bar():
         f"คิวรอตรวจ: {len(data.get('pending_reviews', []))} | อนุมัติแล้วสะสม: {approved_cnt} — จัดเก็บด้วย {BACKEND.upper()}")
     st.divider()
 
+# ===== Email helper (วางไว้ส่วน Utilities ก่อน do_login_form) =====
+import smtplib, ssl
+from email.message import EmailMessage
+
+def send_email(to: str, subject: str, body: str) -> bool:
+    """
+    ส่งอีเมลผ่าน SMTP ตามค่าใน st.secrets
+    รองรับ STARTTLS (587) และสลับไปใช้ SSL (465) ได้ถ้าตั้ง SMTP_SSL=true
+    """
+    host = st.secrets.get("SMTP_HOST")
+    port = int(st.secrets.get("SMTP_PORT", "587"))
+    user = st.secrets.get("SMTP_USER")
+    pwd  = st.secrets.get("SMTP_PASS")
+    sender = st.secrets.get("SMTP_SENDER", user)
+    sender_name = st.secrets.get("SMTP_SENDER_NAME", "MU Course Reviews")
+    use_ssl = str(st.secrets.get("SMTP_SSL", "false")).lower() in ("1","true","yes")
+
+    if not all([host, port, user, pwd, sender]):
+        st.error("SMTP secrets ไม่ครบ (ตรวจ SMTP_HOST/PORT/USER/PASS/SENDER)")
+        return False
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = f"{sender_name} <{sender}>"
+    msg["To"] = to
+    # ถ้าต้องการให้ reply กลับไปอีเมลอื่น (ทางเลือก)
+    reply_to = st.secrets.get("REPLY_TO")
+    if reply_to:
+        msg["Reply-To"] = reply_to
+    msg.set_content(body)
+
+    try:
+        if use_ssl:
+            # โหมด SSL (มักใช้พอร์ต 465)
+            with smtplib.SMTP_SSL(host, port, timeout=20) as s:
+                s.login(user, pwd)
+                s.send_message(msg)
+        else:
+            # โหมด STARTTLS (พอร์ต 587)
+            with smtplib.SMTP(host, port, timeout=20) as s:
+                s.starttls(context=ssl.create_default_context())
+                s.login(user, pwd)
+                s.send_message(msg)
+        return True
+    except Exception as e:
+        st.error(f"SMTP error: {e}")
+        return False
+
+
 
 def main():
     # handle magic links (verify/reset) before painting header
