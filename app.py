@@ -673,41 +673,45 @@ def do_login_form():
     from textwrap import dedent  # ใส่ไว้ด้านบนของไฟล์ ถ้ายังไม่ได้ import
 
     # ===== Sign up Tab =====
+    from textwrap import dedent  # ถ้ายังไม่ได้ import
+
+    # ===== Sign up Tab =====
     with tabs[1]:
-        email = st.text_input("อีเมลนักศึกษา (@%s)" % ALLOWED_EMAIL_DOMAIN, key="auth_signup_email")
+        student_email = st.text_input("อีเมลนักศึกษา (@%s)" % ALLOWED_EMAIL_DOMAIN,
+                                      key="auth_signup_email")
         pw1 = st.text_input("รหัสผ่าน", type="password", key="auth_signup_pw1")
         pw2 = st.text_input("ยืนยันรหัสผ่าน", type="password", key="auth_signup_pw2")
         display = st.text_input("ชื่อที่แสดง (ไม่บังคับ)", key="auth_signup_display")
+
         if st.button("สมัครสมาชิก", key="auth_signup_btn"):
-            if not email or not email.lower().endswith("@" + ALLOWED_EMAIL_DOMAIN):
+            if not student_email or not student_email.lower().endswith("@" + ALLOWED_EMAIL_DOMAIN):
                 st.error("ต้องใช้อีเมล @%s เท่านั้น" % ALLOWED_EMAIL_DOMAIN)
             elif not pw1 or len(pw1) < 6:
                 st.error("รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร")
             elif pw1 != pw2:
                 st.error("รหัสผ่านยืนยันไม่ตรงกัน")
-            elif find_user_by_email(email):
+            elif find_user_by_email(student_email):
                 st.error("อีเมลนี้มีผู้ใช้งานแล้ว")
             else:
                 salt = make_salt()
                 pw_hash = hash_password(pw1, salt)
                 user = {
-                    "email": email,
+                    "email": student_email,
                     "password_salt": salt,
                     "password_hash": pw_hash,
                     "role": "student",
-                    "display": (display or email),
+                    "display": (display or student_email),
                     "is_verified": False,
                     "created_at": datetime.now().isoformat(timespec="seconds"),
                 }
                 upsert_user(user)
 
-                # สร้างโทเคนและลิงก์ยืนยัน
-                tok = add_token(email, "verify", "")
+                # token + link
+                tok = add_token(student_email, "verify", "")
                 link = make_link_with_param("verify", tok["token"])
 
-                # เนื้อหาอีเมล (ปิดสตริงครบ ใช้ลิงก์ตัวแปร link)
                 body = dedent(f"""\
-                สวัสดี {display or email},
+                สวัสดี {display or student_email},
 
                 กรุณาคลิกลิงก์ด้านล่างเพื่อยืนยันอีเมลสำหรับเข้าใช้งานระบบรีวิวรายวิชา:
                 {link}
@@ -716,24 +720,18 @@ def do_login_form():
                 — MU Course Reviews
                 """)
 
-                ok = send_email(
-                    to=email,
-                    subject="ยืนยันอีเมลสำหรับเข้าใช้งาน — MU Course Reviews",
-                    body=body,
-                )
+                # ส่งอีเมล (เลือกอย่างใดอย่างหนึ่ง ตามที่คุณใช้ในโปรเจกต์)
+                # 1) ถ้ามี helper ชื่อ send_email:
+                # ok = send_email(to=student_email, subject="ยืนยันอีเมลสำหรับลงทะเบียน", body=body)
+                # 2) ถ้าใช้อ็อบเจ็กต์ MAILER:
+                ok = MAILER.send(student_email, "ยืนยันอีเมลสำหรับลงทะเบียน", body)
+
                 if ok:
-                    st.success("สมัครเสร็จแล้ว! โปรดตรวจอีเมลเพื่อกดยืนยัน")
+                    st.success("สมัครเสร็จแล้ว! โปรดตรวจอีเมลเพื่อกดยืนยันก่อนเข้าสู่ระบบ")
                 else:
                     st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ยืนยันชั่วคราวด้านล่างได้เลย")
                     st.code(link)
 
-
-sent = MAILER.send(email, "ยืนยันอีเมลสำหรับลงทะเบียน", body)
-if sent:
-    st.success("สมัครเสร็จแล้ว! โปรดตรวจอีเมลเพื่อกดยืนยันก่อนเข้าสู่ระบบ")
-else:
-    st.warning("ส่งอีเมลไม่สำเร็จ — คุณสามารถคลิกลิงก์ยืนยันได้จากในหน้านี้: ")
-    st.markdown(f"[กดยืนยันการสมัคร]({link})")
 
 # ===== Forgot password Tab =====
 with tabs[2]:
