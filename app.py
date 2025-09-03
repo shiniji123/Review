@@ -741,17 +741,34 @@ class GoogleSheetsStorage(GoogleSheetsStorage):  # type: ignore[misc]
         self._ensure_headers(self.ws_users, USERS_HEADERS)
         self._ensure_headers(self.ws_tokens, TOKENS_HEADERS)
 
-    def _ensure_headers(self, ws):
+    def _ensure_headers(self, ws, headers=None):
+        """
+        ให้แผ่น (worksheet) มีหัวตารางตาม headers
+        - ถ้าแถวแรกว่าง: เขียน headers ทั้งแถว
+        - ถ้าขาดหัวบางตัว: เติมต่อท้าย โดยไม่ล้างข้อมูลเดิม
+        """
+        if headers is None:
+            headers = HEADERS  # ถ้าไม่ส่งมาก็ใช้ HEADERS ปกติ
+
         hdr = ws.row_values(1)
+
+        # helper: เลขคอลัมน์ -> ตัวอักษร A1 (รองรับ > 26 คอลัมน์)
+        def _col_letter(n: int) -> str:
+            s = ""
+            while n:
+                n, r = divmod(n - 1, 26)
+                s = chr(65 + r) + s
+            return s
+
         if not hdr:
-            ws.update("A1", [HEADERS])
+            ws.update("A1", [headers])
             return
-        # ต่อหัวตารางให้ครบถ้าขาด โดยไม่ล้างข้อมูล
-        if hdr != HEADERS:
-            missing = [h for h in HEADERS if h not in hdr]
-            if missing:
-                new_hdr = hdr + missing
-                ws.update(f"A1:{chr(64 + len(new_hdr))}1", [new_hdr])
+
+        missing = [h for h in headers if h not in hdr]
+        if missing:
+            new_hdr = hdr + missing
+            last_col = _col_letter(len(new_hdr))
+            ws.update(f"A1:{last_col}1", [new_hdr])
 
     # keep existing review methods from base class; add users/tokens I/O
     def load_users(self) -> List[Dict]:
