@@ -305,95 +305,85 @@ ALL_COURSES = flatten_catalog()
 # -----------------------------
 
 # Columns schema used for cloud storage
-HEADERS = [
-    "id",
-    "course_type",           # <— เพิ่มใหม่
-    "faculty","faculty_name",
-    "department","department_name",
-    "year",
-    "course_code","course_name",
-    "rating","text","author","created_at","status"
-]
+try:
+    HEADERS
+except NameError:
+    HEADERS = [
+        "id",
+        "course_type",
+        "faculty", "faculty_name",
+        "department", "department_name",
+        "year",
+        "course_code", "course_name",
+        "rating", "text", "author", "created_at", "status",
+    ]
+try:
+    USERS_HEADERS
+except NameError:
+    USERS_HEADERS = [
+        "email", "display", "role",
+        "password_salt", "password_hash",
+        "is_verified", "created_at",
+    ]
+try:
+    TOKENS_HEADERS
+except NameError:
+    TOKENS_HEADERS = [
+        "token", "email", "kind", "payload", "created_at", "used_at",
+    ]
 
-
-
-class LocalJSONStorage:
-    def __init__(self, path: str):
-        self.path = path
-        self._ensure()
-
-    def _ensure(self):
-        if not os.path.exists(self.path):
-            os.makedirs(os.path.dirname(self.path), exist_ok=True)
-            with open(self.path, "w", encoding="utf-8") as f:
-                json.dump({"approved_reviews": [], "pending_reviews": []}, f, ensure_ascii=False, indent=2)
-
-    def load_data(self) -> Dict:
-        with open(self.path, "r", encoding="utf-8") as f:
-            return json.load(f)
-
-    def save_data(self, data: Dict) -> None:
-        with open(self.path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 class GoogleSheetsStorage:
     """
-    Use Google Sheets as a simple cloud DB.
-    Requirements:
-      - Add to requirements.txt: gspread==6.1.2 google-auth==2.35.0
-      - In Streamlit Cloud, set secrets:
-          STORAGE_BACKEND="gsheets"
-          SPREADSHEET_KEY="<your_google_sheet_id>"
-          [gcp_service_account]
-          type="service_account"
-          project_id="..."
-          private_key_id="..."
-          private_key="-----BEGIN PRIVATE KEY-----
-...
------END PRIVATE KEY-----
-"
-          client_email="<sa-name>@<project>.iam.gserviceaccount.com"
-          client_id="..."
-          token_uri="https://oauth2.googleapis.com/token"
-      - Share the Google Sheet with the service account email (Editor).
+    ใช้ Google Sheets เป็น “คลาวด์ DB” อย่างง่าย
+    - ต้องตั้ง secrets: SPREADSHEET_KEY และ gcp_service_account (JSON)
+    - ต้องแชร์ชีตให้ service account (สิทธิ Editor)
     """
 
     def __init__(self):
-        import gspread  # imported lazily to avoid local env errors
+        import gspread  # import แบบ lazy
         svc_info = dict(st.secrets.get("gcp_service_account", {}))
         if not svc_info:
             raise RuntimeError("Missing gcp_service_account in secrets")
         self.spreadsheet_key = st.secrets.get("SPREADSHEET_KEY")
         if not self.spreadsheet_key:
             raise RuntimeError("Missing SPREADSHEET_KEY in secrets")
+
         self.gc = gspread.service_account_from_dict(svc_info)
         self.ss = self.gc.open_by_key(self.spreadsheet_key)
-        # Ensure worksheets
-        self.ws_pending = self._get_or_create_ws("pending_reviews")
-        self.ws_approved = self._get_or_create_ws("approved_reviews")
-        self._ensure_headers(self.ws_pending)
-        self._ensure_headers(self.ws_approved)
 
-    def _get_or_create_ws(self, title: str):
+        # worksheets ที่ต้องใช้
+        self.ws_pending  = self._get_or_create_ws("pending_reviews",  cols=len(HEADERS))
+        self.ws_approved = self._get_or_create_ws("approved_reviews", cols=len(HEADERS))
+        self.ws_users    = self._get_or_create_ws("users",            cols=len(USERS_HEADERS))
+        self.ws_tokens   = self._get_or_create_ws("tokens",           cols=len(TOKENS_HEADERS))
+
+        # บังคับหัวตารางให้ครบ (เติมหัวที่ตกหล่น “ต่อท้าย” ไม่ลบของเดิม)
+        self._ensure_headers(self.ws_pending,  HEADERS)
+        self._ensure_headers(self.ws_approved, HEADERS)
+        self._ensure_headers(self.ws_users,    USERS_HEADERS)
+        self._ensure_headers(self.ws_tokens,   TOKENS_HEADERS)
+
+    # ---------- internal helpers ----------
+
+    def _get_or_create_ws(self, title: str, rows: int = 2000, cols: int = 20):
         try:
             return self.ss.worksheet(title)
         except Exception:
-            return self.ss.add_worksheet(title=title, rows=2000, cols=len(HEADERS))
+            return self.ss.add_worksheet(title=title, rows=rows, cols=cols)
 
-    # ในคลาส GoogleSheetsStorage แทนที่เมธอดนี้ทั้งก้อน
     def _ensure_headers(self, ws, headers=None):
-        """Ensure first row contains the expected headers.
-        - ถ้าแผ่นยังว่าง: เขียน headers ลงบรรทัดที่ 1
-        - ถ้าบางหัวคอลัมน์หายไป: เติมต่อท้าย โดยไม่ลบข้อมูลเดิม
+        """
+        ให้แผ่น (worksheet) มีหัวตารางตาม headers
+        - ถ้าแถวแรกว่าง: เขียน headers ทั้งแถว
+        - ถ้าขาดหัวบางตัว: เติมต่อท้าย โดยไม่ล้างข้อมูลเดิม
         """
         if headers is None:
-            headers = HEADERS  # ใช้ HEADERS เริ่มต้นถ้าไม่ได้ส่งมา
+            headers = HEADERS
 
-        # อ่านหัวแถวแรก (gspread จะตัดคอลัมน์ที่ว่างท้าย ๆ ออก)
         hdr = ws.row_values(1)
 
-        # helper: แปลงเลขคอลัมน์ -> ตัวอักษร A1 (รองรับ > 26 คอลัมน์)
         def _col_letter(n: int) -> str:
             s = ""
             while n:
@@ -402,57 +392,158 @@ class GoogleSheetsStorage:
             return s
 
         if not hdr:
-            # ถ้ายังไม่มีหัวเลย
             ws.update("A1", [headers])
             return
 
-        # เติมหัวที่ขาด โดยไม่ลบของเดิม (เก็บลำดับ headers ที่เราคาดหวัง)
         missing = [h for h in headers if h not in hdr]
         if missing:
             new_hdr = hdr + missing
             last_col = _col_letter(len(new_hdr))
             ws.update(f"A1:{last_col}1", [new_hdr])
 
-    def _rows_to_dicts(self, rows: List[List[str]]) -> List[Dict]:
+    def _read_all(self, ws) -> (List[str], List[List[str]]):
+        """
+        อ่านค่าทั้งชีตแล้วแยก (headers, rows)
+        headers = แถวแรก
+        rows    = ตั้งแต่แถวที่ 2 เป็นต้นไป (list of list)
+        """
+        vals = ws.get_all_values()
+        if not vals:
+            return [], []
+        headers = vals[0]
+        rows = vals[1:] if len(vals) > 1 else []
+        return headers, rows
+
+    def _rows_to_dicts(self, rows: List[List[str]], headers: List[str], default_headers: List[str]) -> List[Dict]:
+        """
+        map row -> dict ด้วยชื่อหัวคอลัมน์จริง
+        ถ้าหัวจริงบางตัวไม่มี ให้เติมค่าว่าง; ถ้าหัวเกินจาก default_headers จะเก็บไว้ด้วย
+        """
+        # รวมคีย์ที่ต้องการ (default) + ที่มีอยู่จริง (กันหัวเพิ่ม)
+        keys = list(dict.fromkeys(list(default_headers) + list(headers)))
         out: List[Dict] = []
         for r in rows:
-            rec = {HEADERS[i]: (r[i] if i < len(r) else "") for i in range(len(HEADERS))}
-            # normalize types
-            try:
-                rec["year"] = int(rec.get("year") or 0)
-            except Exception:
-                rec["year"] = 0
-            try:
-                rec["rating"] = int(rec.get("rating") or 0)
-            except Exception:
-                rec["rating"] = 0
+            rec = {k: "" for k in keys}
+            for i, v in enumerate(r):
+                if i < len(headers):
+                    rec[headers[i]] = v
+            # normalize เฉพาะฟิลด์ที่เรารู้ชนิด
+            if "year" in rec:
+                try:
+                    rec["year"] = int(rec.get("year") or 0)
+                except Exception:
+                    rec["year"] = 0
+            if "rating" in rec:
+                try:
+                    rec["rating"] = int(rec.get("rating") or 0)
+                except Exception:
+                    rec["rating"] = 0
             out.append(rec)
         return out
 
-    def _dicts_to_rows(self, dicts: List[Dict]) -> List[List[str]]:
+    def _dicts_to_rows(self, dicts: List[Dict], headers: List[str]) -> List[List[str]]:
+        """map dict -> row ตามลำดับ headers ที่กำหนด (เขียนแค่หัวที่สนใจ)"""
         rows: List[List[str]] = []
         for d in dicts:
-            rows.append([str(d.get(k, "")) for k in HEADERS])
+            rows.append([str(d.get(k, "")) for k in headers])
         return rows
 
+    # ---------- public: reviews ----------
+
     def load_data(self) -> Dict:
-        # Fetch all records (after header)
-        pr = self.ws_pending.get_all_values()
-        ar = self.ws_approved.get_all_values()
-        pending = self._rows_to_dicts(pr[1:]) if len(pr) > 1 else []
-        approved = self._rows_to_dicts(ar[1:]) if len(ar) > 1 else []
+        # pending
+        hdr_p, rows_p = self._read_all(self.ws_pending)
+        if not hdr_p:
+            self._ensure_headers(self.ws_pending, HEADERS)
+            hdr_p, rows_p = HEADERS, []
+        pending = self._rows_to_dicts(rows_p, hdr_p, HEADERS)
+
+        # approved
+        hdr_a, rows_a = self._read_all(self.ws_approved)
+        if not hdr_a:
+            self._ensure_headers(self.ws_approved, HEADERS)
+            hdr_a, rows_a = HEADERS, []
+        approved = self._rows_to_dicts(rows_a, hdr_a, HEADERS)
+
         return {"pending_reviews": pending, "approved_reviews": approved}
 
     def save_data(self, data: Dict) -> None:
-        # Rewrite both sheets entirely (simple + safe for prototype)
+        """
+        เขียนทับทั้งชีตแบบง่าย (เหมาะกับโปรโตไทป์)
+        ถ้าต้องการลดโควตา สามารถเปลี่ยนเป็น partial update ได้ภายหลัง
+        """
         pending = data.get("pending_reviews", [])
         approved = data.get("approved_reviews", [])
-        # write pending
+
+        # pending
         self.ws_pending.clear()
-        self.ws_pending.update("A1", [HEADERS] + self._dicts_to_rows(pending))
-        # write approved
+        self.ws_pending.update("A1", [HEADERS] + self._dicts_to_rows(pending, HEADERS))
+
+        # approved
         self.ws_approved.clear()
-        self.ws_approved.update("A1", [HEADERS] + self._dicts_to_rows(approved))
+        self.ws_approved.update("A1", [HEADERS] + self._dicts_to_rows(approved, HEADERS))
+
+    # ---------- public: users ----------
+
+    def load_users(self) -> List[Dict]:
+        hdr, rows = self._read_all(self.ws_users)
+        if not hdr:
+            self._ensure_headers(self.ws_users, USERS_HEADERS)
+            return []
+        return self._rows_to_dicts(rows, hdr, USERS_HEADERS)
+
+    def upsert_user(self, user: Dict) -> None:
+        """
+        เพิ่ม/แก้ไขผู้ใช้ โดยใช้ email เป็นคีย์
+        """
+        users = self.load_users()
+        email = (user.get("email") or "").strip().lower()
+        idx = next((i for i, u in enumerate(users) if (u.get("email") or "").lower() == email), -1)
+        if idx >= 0:
+            users[idx].update(user)
+        else:
+            users.append(user)
+
+        self.ws_users.clear()
+        self.ws_users.update("A1", [USERS_HEADERS] + self._dicts_to_rows(users, USERS_HEADERS))
+
+    # ---------- public: tokens (verify/reset) ----------
+
+    def load_tokens(self) -> List[Dict]:
+        hdr, rows = self._read_all(self.ws_tokens)
+        if not hdr:
+            self._ensure_headers(self.ws_tokens, TOKENS_HEADERS)
+            return []
+        return self._rows_to_dicts(rows, hdr, TOKENS_HEADERS)
+
+    def write_tokens(self, tokens: List[Dict]) -> None:
+        self.ws_tokens.clear()
+        self.ws_tokens.update("A1", [TOKENS_HEADERS] + self._dicts_to_rows(tokens, TOKENS_HEADERS))
+
+    def add_token(self, token_row: Dict) -> None:
+        """
+        เพิ่มโทเคนใหม่ 1 แถว (append) – ลดการอ่าน/เขียนทั้งชีต
+        """
+        # ให้แน่ใจว่าหัวครบก่อน
+        self._ensure_headers(self.ws_tokens, TOKENS_HEADERS)
+        row = [str(token_row.get(k, "")) for k in TOKENS_HEADERS]
+        self.ws_tokens.append_row(row, value_input_option="USER_ENTERED")
+
+    def mark_token_used(self, token: str) -> bool:
+        """
+        เซ็ต used_at ให้โทเคนที่ตรง (หาแบบอ่านทั้งหมดแล้วเขียนทับกลับไป)
+        """
+        tokens = self.load_tokens()
+        found = False
+        now = datetime.now().isoformat(timespec="seconds")
+        for t in tokens:
+            if t.get("token") == token and not t.get("used_at"):
+                t["used_at"] = now
+                found = True
+                break
+        if found:
+            self.write_tokens(tokens)
+        return found
 
 
 # Select backend from secrets (default to local JSON)
