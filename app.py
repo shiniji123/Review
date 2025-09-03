@@ -45,6 +45,8 @@ st.markdown(
 
 APP_TITLE = "ระบบรีวิวรายวิชามหาวิทยาลัย (Prototype) — รวมหน้า Student/Admin"
 DATA_FILE = os.path.join("data", "data.json")
+MIN_PASSWORD_LEN = 8
+
 
 # -----------------------------
 # Auth (prototype)
@@ -713,15 +715,17 @@ def do_login_form():
     # =========================
     elif mode == "Sign up":
         student_email = st.text_input(f"อีเมลนักศึกษา (@{ALLOWED_EMAIL_DOMAIN})", key="auth_signup_email")
-        pw1 = st.text_input("รหัสผ่าน", type="password", key="auth_signup_pw1")
+        pw1 = st.text_input("รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)", type="password", key="auth_signup_pw1")
+        st.caption(f"รหัสผ่านต้องยาวอย่างน้อย {MIN_PASSWORD_LEN} ตัวอักษร")
+
         pw2 = st.text_input("ยืนยันรหัสผ่าน", type="password", key="auth_signup_pw2")
         display = st.text_input("ชื่อที่แสดง (ไม่บังคับ)", key="auth_signup_display")
 
         if st.button("สมัครสมาชิก", key="auth_signup_btn"):
             if not student_email or not student_email.lower().endswith("@" + ALLOWED_EMAIL_DOMAIN):
                 st.error(f"ต้องใช้อีเมล @{ALLOWED_EMAIL_DOMAIN} เท่านั้น")
-            elif not pw1 or len(pw1) < 6:
-                st.error("รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร")
+            elif not pw1 or len(pw1) < MIN_PASSWORD_LEN:
+                st.error(f"รหัสผ่านต้องยาวอย่างน้อย {MIN_PASSWORD_LEN} ตัวอักษร")
             elif pw1 != pw2:
                 st.error("รหัสผ่านยืนยันไม่ตรงกัน")
             else:
