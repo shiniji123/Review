@@ -1258,9 +1258,12 @@ def page_student(data: Dict):
         course = courses[course_ix]
 
         # ✅ กล่องข้อมูลรายวิชา (รวม header + meta + คำอธิบาย ไว้ในกรอบเดียว)
+        # ✅ เมตาเรียงลำดับ: credit → prereq → grading → updated_at
         meta_bits = []
         if course.get("credit"):
             meta_bits.append(f"หน่วยกิต: {course['credit']}")
+        if course.get("prereq"):
+            meta_bits.append(f"เงื่อนไขรายวิชา: {course['prereq']}")
         if course.get("grading"):
             label = {"ABC": "เกรด A–F", "OSU": "O/S/U"}.get(course["grading"], course["grading"])
             meta_bits.append(f"การตัดเกรด: {course['grading']} ({label})")
@@ -1282,8 +1285,6 @@ def page_student(data: Dict):
 
           {f'<div style="margin-bottom:.35rem;"><b>คำอธิบายรายวิชา (ภาษาอังกฤษ)</b></div>' if course.get('desc_en') else ''}
           {f'<div class="muted">{course["desc_en"]}</div>' if course.get('desc_en') else ''}
-
-          {f'<div class="muted" style="margin-top:.6rem;">เงื่อนไขรายวิชา: {course["prereq"]}</div>' if course.get('prereq') else ''}
         </div>
         """
         st.markdown(box_html, unsafe_allow_html=True)
@@ -1403,12 +1404,17 @@ def page_student(data: Dict):
                     # 🔹 เพิ่มบรรทัดหน่วยกิต/การตัดเกรด/อัปเดตล่าสุด (ใช้ COURSE_LUT)
                     info = COURSE_LUT.get(r.get("course_code", ""), {})
                     meta2 = []
-                    if info.get("credit"):     meta2.append(f"หน่วยกิต: {info['credit']}")
+                    if info.get("credit"):
+                        meta2.append(f"หน่วยกิต: {info['credit']}")
+                    if info.get("prereq"):
+                        meta2.append(f"เงื่อนไขรายวิชา: {info['prereq']}")
                     if info.get("grading"):
                         label = {"ABC": "เกรด A–F", "OSU": "O/S/U"}.get(info["grading"], info["grading"])
                         meta2.append(f"การตัดเกรด: {info['grading']} ({label})")
-                    if info.get("updated_at"): meta2.append(f"อัปเดตล่าสุด: {info['updated_at']}")
-                    if meta2: st.caption(" • ".join(meta2))
+                    if info.get("updated_at"):
+                        meta2.append(f"อัปเดตล่าสุด: {info['updated_at']}")
+                    if meta2:
+                        st.caption(" • ".join(meta2))
 
                     # เพิ่มบรรทัด prerequisite และคำอธิบาย
                     if info.get("prereq"):
