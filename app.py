@@ -381,11 +381,37 @@ class GoogleSheetsStorage:
         except Exception:
             return self.ss.add_worksheet(title=title, rows=2000, cols=len(HEADERS))
 
-    def _ensure_headers(self, ws):
+    # ในคลาส GoogleSheetsStorage แทนที่เมธอดนี้ทั้งก้อน
+    def _ensure_headers(self, ws, headers=None):
+        """Ensure first row contains the expected headers.
+        - ถ้าแผ่นยังว่าง: เขียน headers ลงบรรทัดที่ 1
+        - ถ้าบางหัวคอลัมน์หายไป: เติมต่อท้าย โดยไม่ลบข้อมูลเดิม
+        """
+        if headers is None:
+            headers = HEADERS  # ใช้ HEADERS เริ่มต้นถ้าไม่ได้ส่งมา
+
+        # อ่านหัวแถวแรก (gspread จะตัดคอลัมน์ที่ว่างท้าย ๆ ออก)
         hdr = ws.row_values(1)
-        if hdr != HEADERS:
-            ws.clear()
-            ws.update("A1", [HEADERS])
+
+        # helper: แปลงเลขคอลัมน์ -> ตัวอักษร A1 (รองรับ > 26 คอลัมน์)
+        def _col_letter(n: int) -> str:
+            s = ""
+            while n:
+                n, r = divmod(n - 1, 26)
+                s = chr(65 + r) + s
+            return s
+
+        if not hdr:
+            # ถ้ายังไม่มีหัวเลย
+            ws.update("A1", [headers])
+            return
+
+        # เติมหัวที่ขาด โดยไม่ลบของเดิม (เก็บลำดับ headers ที่เราคาดหวัง)
+        missing = [h for h in headers if h not in hdr]
+        if missing:
+            new_hdr = hdr + missing
+            last_col = _col_letter(len(new_hdr))
+            ws.update(f"A1:{last_col}1", [new_hdr])
 
     def _rows_to_dicts(self, rows: List[List[str]]) -> List[Dict]:
         out: List[Dict] = []
