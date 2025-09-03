@@ -10,6 +10,8 @@ from textwrap import dedent
 import pandas as pd
 import smtplib, ssl
 from email.message import EmailMessage
+# -----------------------------
+# Course Types & Faculty Catalogs
 
 # -----------------------------
 # -----------------------------
@@ -27,6 +29,33 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+st.markdown("""
+<style>
+/* โหลดฟอนต์สำรอง (ถ้าเครื่องไม่มี Browallia New) */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+
+/* ตั้ง stack ฟอนต์ทั้งระบบ */
+:root {
+  --app-font: "Browallia New", "Sarabun",
+              system-ui, -apple-system, "Segoe UI", Roboto,
+              "Helvetica Neue", Arial, "Noto Sans Thai", "Noto Sans", sans-serif;
+}
+
+/* บังคับทั้งแอป (ตัวอักษรไทย/อังกฤษในคอมโพเนนต์เกือบทั้งหมด) */
+html, body,
+[data-testid="stAppViewContainer"],
+[data-testid="stHeader"],
+[data-testid="stSidebar"],
+[data-testid="stToolbar"],
+[class^="st-"], [class*=" st-"],
+[data-testid="stMarkdownContainer"] * ,
+[data-testid="stTable"] * {
+  font-family: var(--app-font) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 APP_TITLE = "เว็บไซต์รีวิวรายวิชามหาวิทยาลัยมหิดล MU Review Course"
 DATA_FILE = os.path.join("data", "data.json")
