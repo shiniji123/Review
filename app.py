@@ -37,10 +37,12 @@ st.markdown("""
 
 /* ตั้ง stack ฟอนต์ทั้งระบบ */
 :root {
-  --app-font: "Browallia New";
+  --app-font: "Browallia New", "Sarabun",
+              system-ui, -apple-system, "Segoe UI", Roboto,
+              "Helvetica Neue", Arial, "Noto Sans Thai", "Noto Sans", sans-serif;
 }
 
-html, body { font-size: 20px; }
+html, body { font-size: 24px; }
 
 /* บังคับทั้งแอป (ตัวอักษรไทย/อังกฤษในคอมโพเนนต์เกือบทั้งหมด) */
 html, body,
