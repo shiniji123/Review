@@ -925,17 +925,19 @@ def do_login_form():
 
     # ใช้ radio (จำสถานะข้าม rerun ได้) แทน tabs
     mode = st.radio(
+        "",
         ["Login", "Sign up", "Forgot password"],
         index=["Login", "Sign up", "Forgot password"].index(st.session_state["auth_mode"]),
         horizontal=True,
-        key="auth_mode"
+        key="auth_mode",
+        label_visibility="collapsed",  # ซ่อน label
     )
 
     # =========================
     # LOGIN
     # =========================
     if mode == "Login":
-        email_or_admin = st.text_input(f"อีเมลนักศึกษา (@{ALLOWED_EMAIL_DOMAIN})",
+        email_or_admin = st.text_input(f"อีเมลนักศึกษา (@{ALLOWED_EMAIL_DOMAIN}) หรือ admin",
                                        key="auth_login_email")
         pw = st.text_input("รหัสผ่าน", type="password", key="auth_login_pw")
         if st.button("เข้าสู่ระบบ", type="primary", key="auth_login_btn"):
