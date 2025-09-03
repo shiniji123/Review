@@ -177,9 +177,22 @@ COURSE_CATALOG_BY_TYPE = {
                 "credit": "3(3-0-6)"
 
             },
-            {"code": "ME-SCMA302", "name": "คอมบินาทอริกส์เบื้องต้น", "credit": 3},
-            {"code": "ME-SCMA303", "name": "สมการเชิงอนุพันธ์ขั้นสูง", "credit": 3, "prereq": "ME-SCMA3xx"},
-            {"code": "ME-SCMA304", "name": "การวิเคราะห์เชิงตัวเลข", "credit": 3, "prereq": "Linear Algebra"},
+            {
+                "code": "SCMA 371",
+                "name": "Financial Mathematics",
+                "prereq": "SCMA 212 and SCMA 280",
+                "desc_th": "ตัวแบบทางการเงินแบบเวลาไมต่ ่อเนื่อง : การทําอาร์บทราจ ิ แบบจําลองไบโนเมียล อนุพันธ์ตราสารสิทธิเลือก การเทียบเท่าแบบมาร์ติงเกลเมเชอร์ อนุพันธราดอน ์ -นิโคดีม ตัวแบบประเมินสินทรัพย์ทุนตัวแบบอัตราดอกเบี้ย อนุพันธท์ ี่อ้างอิงกับตราสารหนี้กรณีศกษาจากนอกห ึ องเร ้ ียน",
+                "desc_en": "Discrete time models in finance : arbitrage, binomial model, derivatives, options,equivalent martingale measures, Radon-Nikodym derivative, capital asset pricingmodel, interest rate models, fixed income derivatives; case studies from outside theclassroom",
+                "credit": "3(3-0-6)"
+             },
+            {
+                "code": "SCMA 243",
+                "name": "Operating Systems",
+                "prereq": "SCMA 240",
+                "desc_th": "การพัฒนาของระบบปฏิบัติการ กระบวนการและสายโยงใย มัลติโปรแกรมมิงและการแบ่งเวลา การจัดการภาวะพร้อมกัน กําหนดการ อุปกรณ์แฟ้ม ตัวประสานผู้ใช้ระบบเสมือน การจัดสรรทรัพยากรระบบการประมวลผล แบบกระจายและระบบข่ายงาน สมรรถนะ การพัฒนาของระบบปฏิบัติการในอนาคต",
+                "desc_en": "Development of operating systems; processes and threads; multiprogramming andtime sharing; concurrency management; scheduling; devices; files; user interface; virtualsystems; resource allocation; distributed computing and network based systems;performance; future development of the operating systems",
+                "credit": "3(3-0-6)"
+            },
         ],
     },
 }
