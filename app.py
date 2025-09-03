@@ -91,44 +91,82 @@ FACULTIES_BY_TYPE = {
 }
 
 # ตัวอย่างรายวิชาให้เลือกต่อคณะ (ปรับเพิ่ม/แก้ไขได้)
-COURSE_CATALOG_BY_TYPE = {
+# ===== Course catalog (new structure): ประเภท → คณะ → [รายวิชา] =====
+# ฟอร์แมตของ 1 รายวิชา:
+# {"code": "รหัสวิชา", "name": "ชื่อวิชา", "desc_th": "...", "desc_en": "...", "credit": 3, "prereq": "..."}
+
+COURSE_CATALOG = {
+    # -----------------------
+    # 1) GE: รายวิชาศึกษาทั่วไป
+    # -----------------------
     "GE": {
-        "SI": [
-            {"code": "GE-SI101", "name": "การแพทย์พื้นฐานสำหรับประชาชน"},
-            {"code": "GE-SI102", "name": "รู้ทันสุขภาพ"},
+        "SI": [  # คณะแพทยศาสตร์ศิริราชพยาบาล
+            {
+                "code": "SIHE301",
+                "name": "จิตวิทยาสังคมสำหรับบุคลากรในระบบสุขภาพ",
+                "desc_th": "หลักจิตวิทยาสังคมที่ประยุกต์ในงานสุขภาพ ทีมสหสาขา และผู้รับบริการ",
+                "desc_en": "Social psychology for healthcare personnel: teams and patient interactions.",
+                "credit": "2(2-0-4)",  # ← หน่วยกิต (แนะนำให้เก็บเป็นสตริงตาม format ที่มหาลัยใช้)
+                "grading": "OSU",  # ← วิธีตัดเกรด: ABC หรือ OSU
+                "updated_at": "2025-09-03"  # ← วันที่อัปเดตล่าสุด (รูปแบบ YYYY-MM-DD)
+            },
+            # ตัวอย่างเพิ่ม:
+            # {"code": "GE-SI101", "name": "การแพทย์พื้นฐานสำหรับประชาชน", "credit": 3},
         ],
-        "PY": [
-            {"code": "GE-PY101", "name": "เภสัชวิทยาสำหรับชีวิตประจำวัน"},
+        "PY": [  # คณะเภสัชศาสตร์
+            # ตัวอย่าง:
+            # {"code": "GE-PY101", "name": "เภสัชวิทยาสำหรับชีวิตประจำวัน", "credit": 3},
         ],
-        "SC": [
-            {"code": "GE-SC101", "name": "วิทยาศาสตร์ในชีวิตประจำวัน"},
-            {"code": "GE-SC102", "name": "โลกและสิ่งแวดล้อม"},
+        "SC": [  # คณะวิทยาศาสตร์
+            {"code": "GE-SC101", "name": "วิทยาศาสตร์ในชีวิตประจำวัน", "credit": 3},
+            {"code": "GE-SC102", "name": "โลกและสิ่งแวดล้อม", "credit": 3},
         ],
-        # ... ใส่เพิ่มได้ตามคณะด้านบน
+        "NS": [],  # คณะพยาบาลศาสตร์
+        "RA": [],  # รามาธิบดี
+        "EG": [],  # วิศวกรรมศาสตร์
+        "EN": [],  # สิ่งแวดล้อมและทรัพยากรศาสตร์
+        "SH": [],  # สังคมศาสตร์และมนุษยศาสตร์
+        "LA": [],  # ศิลปศาสตร์
+        "SP": [],  # วิทยาศาสตร์และเทคโนโลยีการกีฬา
+        "CF": [],  # สถาบันพัฒนาเด็กและครอบครัว
+        "HP": [],  # สถาบันสิทธิมนุษยชนและสันติศึกษา
+        "IL": [],  # สถาบันนวัตกรรมการเรียนรู้
+        "LC": [],  # วิจัยภาษาและวัฒนธรรมเอเชีย
+        "MU": [],  # ม.มหิดล (ศูนย์ส่งเสริมการเรียนรู้ฯ)
+        "PR": [],  # วิจัยประชากรและสังคม
     },
+
+    # -----------------------
+    # 2) FE: รายวิชาเสรี
+    # -----------------------
     "FE": {
-        "SH": [
-            {"code": "FE-SH201", "name": "สังคมไทยร่วมสมัย"},
+        "SH": [  # สังคมศาสตร์และมนุษยศาสตร์
+            # {"code": "FE-SH201", "name": "สังคมไทยร่วมสมัย", "credit": 3},
         ],
-        "LA": [
-            {"code": "FE-LA201", "name": "ภาษาและวัฒนธรรมอาเซียน"},
+        "LA": [  # ศิลปศาสตร์
+            # {"code": "FE-LA201", "name": "ภาษาและวัฒนธรรมอาเซียน", "credit": 3},
         ],
-        "CR": [
-            {"code": "FE-CR201", "name": "ศาสนาและสังคม"},
+        "CR": [  # วิทยาลัยศาสนศึกษา
+            # {"code": "FE-CR201", "name": "ศาสนาและสังคม", "credit": 3},
         ],
-        "NW": [
-            {"code": "FE-NW201", "name": "นวัตกรรมท้องถิ่นศึกษา"},
+        "NW": [  # วิทยาเขตนครสวรรค์
+            # {"code": "FE-NW201", "name": "นวัตกรรมท้องถิ่นศึกษา", "credit": 3},
         ],
     },
+
+    # -----------------------
+    # 3) ME: รายวิชาเฉพาะเลือก (ทำเฉพาะ SC - คณิตศาสตร์)
+    # -----------------------
     "ME": {
         "SC": [
-            {"code": "ME-SCMA301", "name": "ทฤษฎีจำนวนเบื้องต้น (Mathematics Elective)"},
-            {"code": "ME-SCMA302", "name": "คอมบินาทอริกส์เบื้องต้น"},
-            {"code": "ME-SCMA303", "name": "สมการเชิงอนุพันธ์ขั้นสูง"},
-            {"code": "ME-SCMA304", "name": "การวิเคราะห์เชิงตัวเลข"},
+            {"code": "ME-SCMA301", "name": "ทฤษฎีจำนวนเบื้องต้น (Mathematics Elective)", "credit": 3},
+            {"code": "ME-SCMA302", "name": "คอมบินาทอริกส์เบื้องต้น", "credit": 3},
+            {"code": "ME-SCMA303", "name": "สมการเชิงอนุพันธ์ขั้นสูง", "credit": 3, "prereq": "ME-SCMA3xx"},
+            {"code": "ME-SCMA304", "name": "การวิเคราะห์เชิงตัวเลข", "credit": 3, "prereq": "Linear Algebra"},
         ],
-    }
+    },
 }
+
 
 def list_faculties_by_type(course_type: str) -> dict:
     return FACULTIES_BY_TYPE.get(course_type, {})
@@ -1212,6 +1250,28 @@ def page_student(data: Dict):
             unsafe_allow_html=True,
         )
 
+        # NEW: แสดง meta เพิ่มเติม (หน่วยกิต, วิธีตัดเกรด, วันอัปเดต)
+        meta_bits = []
+        if course.get("credit"):
+            meta_bits.append(f"หน่วยกิต: {course['credit']}")
+        if course.get("grading"):
+            # แสดงย่อ + คำอธิบายสั้นๆ (optional)
+            label = {"ABC": "เกรด A–F", "OSU": "O/S/U"}.get(course["grading"], course["grading"])
+            meta_bits.append(f"การตัดเกรด: {course['grading']} ({label})")
+        if course.get("updated_at"):
+            meta_bits.append(f"อัปเดตล่าสุด: {course['updated_at']}")
+
+        if meta_bits:
+            st.caption(" • ".join(meta_bits))
+
+        # คำอธิบายรายวิชา (เหมือนเดิม)
+        if course.get("prereq"):
+            st.caption(f"เงื่อนไขรายวิชา: {course['prereq']}")
+        if course.get("desc_th"):
+            st.write(course["desc_th"])
+        if course.get("desc_en"):
+            st.markdown(f"<span class='muted'>{course['desc_en']}</span>", unsafe_allow_html=True)
+
         if course.get("prereq"): st.caption(f"เงื่อนไขรายวิชา: {course['prereq']}")
         if course.get("desc_th"): st.write(course["desc_th"])
         if course.get("desc_en"): st.markdown(f"<span class='muted'>{course['desc_en']}</span>", unsafe_allow_html=True)
@@ -1811,6 +1871,28 @@ def page_admin(data: Dict):
             st.download_button("Download data.json", payload, "data.json", "application/json")
 
 
+# สร้าง lookup จาก catalog: code → {credit, grading, updated_at}
+def build_course_lookup():
+    lut = {}
+    for ctype, facs in COURSE_CATALOG.items():
+        for fac, items in facs.items():
+            for c in items:
+                lut[c["code"]] = {
+                    "credit": c.get("credit"),
+                    "grading": c.get("grading"),
+                    "updated_at": c.get("updated_at"),
+                }
+    return lut
+
+COURSE_LUT = build_course_lookup()
+
+info = COURSE_LUT.get(r.get("course_code",""), {})
+meta2 = []
+if info.get("credit"): meta2.append(f"หน่วยกิต: {info['credit']}")
+if info.get("grading"): meta2.append(f"การตัดเกรด: {info['grading']}")
+if info.get("updated_at"): meta2.append(f"อัปเดตล่าสุด: {info['updated_at']}")
+if meta2:
+    st.markdown(" · ".join(meta2))
 
 # -----------------------------
 # Main
