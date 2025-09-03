@@ -10,25 +10,8 @@ from textwrap import dedent
 import pandas as pd
 import smtplib, ssl
 from email.message import EmailMessage
-"""
-All-in-One Streamlit App (Student + Admin)
-- Auth (prototype): student1/1234, student2/1234, admin/admin
-- Frontend (Student):
-  • เลือกวิชาจากแค็ตตาล็อกที่จัดหมวดหมู่: คณะ → สาขา → ชั้นปี → รายวิชา (แสดงทั้งหมดก่อนแล้วค่อยกรอง)
-  • แสดงคำอธิบายรายวิชา + ข้อมูลคณะ/สาขา + หน่วยกิต + Prerequisite
-  • ส่งรีวิว (1–5 ดาว + ข้อความ) → เข้าคิวรออนุมัติ
-  • ดูรีวิวอนุมัติแล้ว พร้อมตัวกรองคณะ/สาขา/ปี/รายวิชา + ค้นหา
-- Backend (Admin):
-  • ตัวกรองครบ: คณะ → สาขา → ชั้นปี (1–4) → รายวิชา + คีย์เวิร์ด + คะแนนขั้นต่ำ + จัดเรียง
-  • มุมมองแบบ Grouped: คณะ > สาขา > ชั้นปี พร้อมอนุมัติ/ปฏิเสธรายรายการ และ Bulk approve/reject
-  • แท็บสรุปภาพรวม (ตาราง) กรองคณะ/สาขา/ชั้นปีได้
-  • ส่งออก CSV/JSON
 
-Storage: local JSON (./data/data.json)
-Requires: streamlit>=1.31
-Run: streamlit run app_all_in_one.py
-"""
-
+# -----------------------------
 # -----------------------------
 # Page & basic styles
 # -----------------------------
@@ -45,7 +28,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-APP_TITLE = "ระบบรีวิวรายวิชามหาวิทยาลัย (Prototype) — รวมหน้า Student/Admin"
+APP_TITLE = "เว็บไซต์รีวิวรายวิชามหาวิทยาลัยมหิดล MU Review Course"
 DATA_FILE = os.path.join("data", "data.json")
 MIN_PASSWORD_LEN = 8
 
