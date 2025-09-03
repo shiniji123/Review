@@ -1368,7 +1368,6 @@ def page_student(data: Dict):
 
         # แสดงรายการรีวิวแบบการ์ด (แนวเดิมของคุณ)
         if not items:
-            # ป้องกันเคสเลือกประเภท/คณะแล้วไม่มีวิชาในแค็ตตาล็อก
             if sel_type and sel_fac and not course_list_b:
                 st.info("คณะนี้ยังไม่มีรายวิชาในแค็ตตาล็อก (เพิ่มได้ภายหลัง)")
             else:
@@ -1376,25 +1375,43 @@ def page_student(data: Dict):
         else:
             for r in sorted(items, key=lambda x: x.get("created_at", ""), reverse=True):
                 with st.container(border=True):
+                    # หัวการ์ด: รหัส + ชื่อวิชา
                     st.markdown(
                         f"<span class='codepill'>{r.get('course_code', '')}</span> "
                         f"<b>{r.get('course_name', '')}</b>",
                         unsafe_allow_html=True,
                     )
-                    # โครงใหม่: โชว์ประเภท/คณะ (ไม่โชว์สาขา/ชั้นปีแล้ว)
+
+                    # แสดงประเภท/คณะ
                     st.markdown(
                         f"ประเภท: {COURSE_TYPES.get(r.get('course_type', ''), r.get('course_type', ''))} • "
                         f"คณะ: {r.get('faculty', '-')} - {r.get('faculty_name', '-')}"
                     )
+
+                    # 🔹 เพิ่มบรรทัดหน่วยกิต/การตัดเกรด/อัปเดตล่าสุด (ใช้ COURSE_LUT)
+                    info = COURSE_LUT.get(r.get("course_code", ""), {})
+                    meta2 = []
+                    if info.get("credit"):
+                        meta2.append(f"หน่วยกิต: {info['credit']}")
+                    if info.get("grading"):
+                        label = {"ABC": "เกรด A–F", "OSU": "O/S/U"}.get(info["grading"], info["grading"])
+                        meta2.append(f"การตัดเกรด: {info['grading']} ({label})")
+                    if info.get("updated_at"):
+                        meta2.append(f"อัปเดตล่าสุด: {info['updated_at']}")
+                    if meta2:
+                        st.caption(" • ".join(meta2))
+
+                    # คะแนน + ผู้รีวิว + วันที่
                     st.markdown(
                         f"ให้คะแนน: <span class='star'>{star_str(int(r.get('rating', 0)))}</span>  "
                         f"<span class='muted'>โดย `{r.get('author', '?')}` • วันที่ {r.get('created_at', '')}</span>",
                         unsafe_allow_html=True,
                     )
+
+                    # เนื้อหารีวิว
                     if r.get("text"):
                         st.markdown("—")
                         st.write(r["text"])
-        # ---- /BROWSE ----
 
 # -----------------------------
 # Admin helpers (filters + grouping)
@@ -1874,7 +1891,7 @@ def page_admin(data: Dict):
 # สร้าง lookup จาก catalog: code → {credit, grading, updated_at}
 def build_course_lookup():
     lut = {}
-    for ctype, facs in COURSE_CATALOG_BY_TYPE.items():
+    for ctype, facs in COURSE_CATALOG.items():
         for fac, items in facs.items():
             for c in items:
                 lut[c["code"]] = {
@@ -1885,14 +1902,6 @@ def build_course_lookup():
     return lut
 
 COURSE_LUT = build_course_lookup()
-
-info = COURSE_LUT.get(r.get("course_code",""), {})
-meta2 = []
-if info.get("credit"): meta2.append(f"หน่วยกิต: {info['credit']}")
-if info.get("grading"): meta2.append(f"การตัดเกรด: {info['grading']}")
-if info.get("updated_at"): meta2.append(f"อัปเดตล่าสุด: {info['updated_at']}")
-if meta2:
-    st.markdown(" · ".join(meta2))
 
 # -----------------------------
 # Main
