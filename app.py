@@ -47,17 +47,7 @@ st.markdown("""
 html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
   font-size: 24px;
 }
-/* 2) บังคับองค์ประกอบที่มักล็อกเป็น px ให้ตาม rem (ต้องใช้ !important) */
-[data-testid="stMarkdownContainer"],
-[data-testid="stMarkdownContainer"] *,
-label,
-p, span,
-div.stButton > button,
-div[data-baseweb="select"] *,
-input, textarea, select {
-  font-size: 1rem !important;   /* 1rem = 24px จากข้อ 1 */
-  line-height: 1.5 !important;
-}
+
 /* บังคับทั้งแอป (ตัวอักษรไทย/อังกฤษในคอมโพเนนต์เกือบทั้งหมด) */
 html, body,
 [data-testid="stAppViewContainer"],
