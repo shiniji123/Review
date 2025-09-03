@@ -7,7 +7,7 @@ from functools import lru_cache
 from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 from textwrap import dedent
-
+import pandas as pd
 
 """
 All-in-One Streamlit App (Student + Admin)
