@@ -8,7 +8,8 @@ from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 from textwrap import dedent
 import pandas as pd
-
+import smtplib, ssl
+from email.message import EmailMessage
 """
 All-in-One Streamlit App (Student + Admin)
 - Auth (prototype): student1/1234, student2/1234, admin/admin
@@ -169,7 +170,8 @@ COURSE_CATALOG_BY_TYPE = {
         "SC": [
             {
                 "code": "SCMA 349",
-                "name": "Software Engineering ",
+                "name": "Software Engineering",
+                "prereq": "SCMA 247",
                 "desc_th": "วิศวกรรมซอฟต์แวร์ขั้นแนะนํา ระบบสังคมเทคนิค ระบบวิกฤต กระบวนการซอฟต์แวร์ การจัดการโครงงาน ความต้องการซอฟต์แวร์การทวนสอบและการตรวจสอบ การทดสอบซอฟต์แวร",
                 "desc_en": "Introduction to software engineering; socio-technical systems; critical systems; softwareprocesses; project management; software requirements; verification and validation;software testing",
                 "credit": "3(3-0-6)"
@@ -1056,7 +1058,7 @@ def do_login_form():
                 elif npw1 != npw2:
                     st.error("รหัสผ่านยืนยันไม่ตรงกัน")
                 else:
-                    tok = find_token(reset_token, "reset") if 'find_token' in globals() else get_token(reset_token)
+                    tok = get_token_record(reset_token, "reset")
                     if not tok or tok.get("used"):
                         st.error("โทเคนไม่ถูกต้องหรือถูกใช้ไปแล้ว")
                     else:
@@ -1069,8 +1071,7 @@ def do_login_form():
                             u["password_salt"] = salt
                             u["password_hash"] = pw_hash
                             upsert_user(u)
-                            if 'mark_token_used' in globals():
-                                mark_token_used(reset_token)
+                            consume_token(reset_token, "reset")
                             st.success("ตั้งรหัสผ่านใหม่สำเร็จ! โปรดเข้าสู่ระบบอีกครั้ง")
                             try:
                                 st.query_params.clear()
@@ -1402,15 +1403,25 @@ def page_student(data: Dict):
                     # 🔹 เพิ่มบรรทัดหน่วยกิต/การตัดเกรด/อัปเดตล่าสุด (ใช้ COURSE_LUT)
                     info = COURSE_LUT.get(r.get("course_code", ""), {})
                     meta2 = []
-                    if info.get("credit"):
-                        meta2.append(f"หน่วยกิต: {info['credit']}")
+                    if info.get("credit"):     meta2.append(f"หน่วยกิต: {info['credit']}")
                     if info.get("grading"):
                         label = {"ABC": "เกรด A–F", "OSU": "O/S/U"}.get(info["grading"], info["grading"])
                         meta2.append(f"การตัดเกรด: {info['grading']} ({label})")
-                    if info.get("updated_at"):
-                        meta2.append(f"อัปเดตล่าสุด: {info['updated_at']}")
-                    if meta2:
-                        st.caption(" • ".join(meta2))
+                    if info.get("updated_at"): meta2.append(f"อัปเดตล่าสุด: {info['updated_at']}")
+                    if meta2: st.caption(" • ".join(meta2))
+
+                    # เพิ่มบรรทัด prerequisite และคำอธิบาย
+                    if info.get("prereq"):
+                        st.caption(f"เงื่อนไขก่อนลงทะเบียน: {info['prereq']}")
+                    if info.get("desc_th") or info.get("desc_en"):
+                        with st.container(border=True):
+                            if info.get("desc_th"):
+                                st.markdown("**คำอธิบายรายวิชา (ภาษาไทย)**")
+                                st.write(info["desc_th"])
+                            if info.get("desc_en"):
+                                st.markdown("<span class='muted'><b>Course Description (English)</b></span>",
+                                            unsafe_allow_html=True)
+                                st.write(info["desc_en"])
 
                     # คะแนน + ผู้รีวิว + วันที่
                     st.markdown(
@@ -1768,11 +1779,17 @@ def build_course_lookup():
         for fac, items in facs.items():
             for c in items:
                 lut[c["code"]] = {
-                    "credit": c.get("credit"),
-                    "grading": c.get("grading"),
+                    "credit":     c.get("credit"),
+                    "grading":    c.get("grading"),
                     "updated_at": c.get("updated_at"),
+                    "prereq":     c.get("prereq"),
+                    "desc_th":    c.get("desc_th"),
+                    "desc_en":    c.get("desc_en"),
+                    "type":       ctype,
+                    "faculty":    fac,
                 }
     return lut
+
 
 COURSE_LUT = build_course_lookup()
 
@@ -1789,8 +1806,7 @@ def header_bar():
     st.divider()
 
 # ===== Email helper (วางไว้ส่วน Utilities ก่อน do_login_form) =====
-import smtplib, ssl
-from email.message import EmailMessage
+
 
 def send_email(to: str, subject: str, body: str) -> bool:
     host = st.secrets.get("SMTP_HOST")
