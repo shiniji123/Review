@@ -1365,127 +1365,55 @@ def page_student(data: Dict):
             st.success("ส่งรีวิวเรียบร้อย! รอผู้ดูแลอนุมัติ")
             st.balloons()
 
-    # Browse tab
+    # Browse tab (เหมือนหน้า Admin - Approved)
     with t_browse:
-        # ---- BROWSE: ดูรีวิวที่อนุมัติแล้ว (แทนทั้งก้อนเดิมนี้) ----
-        st.subheader("ดูรีวิวที่อนุมัติแล้ว (กรองตาม ประเภท/คณะ/รายวิชา)")
+        st.subheader("ดูรีวิวที่อนุมัติแล้ว (มุมมองเดียวกับ Admin)")
+
+        approved_only = [r for r in approved if r.get("status") == "approved"]
 
         col1, col2, col3, col4 = st.columns([1, 1, 1, 1.2])
 
         # 1) ประเภท
         with col1:
-            type_choices = ["ทั้งหมด"] + list(COURSE_TYPES.keys())
-            t = st.selectbox("ประเภท", type_choices, key="b_type")
-            sel_type = None if t == "ทั้งหมด" else t
+            t_opts = admin_type_options(approved_only)
+            s_type = st.selectbox(
+                "ประเภท", t_opts, index=0, key="stu_a_type",
+                format_func=lambda v: "ทั้งหมด" if v == "ทั้งหมด" else COURSE_TYPES.get(v, v)
+            )
+            sel_type2 = None if s_type == "ทั้งหมด" else s_type
 
         # 2) คณะ (ขึ้นกับประเภท)
         with col2:
-            fac_map_b = list_faculties_by_type(sel_type) if sel_type else {}
-            fac_codes_b = ["ทั้งหมด"] + (list(fac_map_b.keys()) if fac_map_b else [])
-            f = st.selectbox("คณะ", fac_codes_b, key="b_fac2")
-            sel_fac = None if f == "ทั้งหมด" else f
+            fac_map2 = admin_faculty_map(approved_only, sel_type2)
+            f_opts2 = ["ทั้งหมด"] + list(sorted(fac_map2.keys()))
+            s_fac = st.selectbox(
+                "คณะ", f_opts2, index=0, key="stu_a_fac",
+                format_func=lambda code: "ทั้งหมด" if code == "ทั้งหมด" else f"{code} - {fac_map2.get(code, code)}"
+            )
+            sel_fac2 = None if s_fac == "ทั้งหมด" else s_fac
 
         # 3) รายวิชา (ขึ้นกับประเภท+คณะ)
         with col3:
-            course_list_b = list_courses(sel_type, sel_fac) if (sel_type and sel_fac) else []
-            course_opts_b = ["ทั้งหมด"] + [f"{c['code']} {c['name']}" for c in course_list_b]
-            c = st.selectbox("รายวิชา", course_opts_b, key="b_course2")
+            c_opts2 = admin_course_options(approved_only, sel_type2, sel_fac2)
+            s_course = st.selectbox("รายวิชา", c_opts2, index=0, key="stu_a_course")
 
         # 4) ค้นหา
         with col4:
-            q = st.text_input("ค้นหาในข้อความรีวิว", key="b_q2")
+            s_q = st.text_input("ค้นหาในข้อความรีวิว/ชื่อวิชา", key="stu_a_q")
 
-        # ดึงเฉพาะอนุมัติแล้ว
-        items = [r for r in approved if r.get("status") == "approved"]
+        # ตัวกรองอื่น ๆ + จัดเรียง
+        s_minr = st.slider("คะแนนขั้นต่ำ", 1, 5, 1, step=1, key="stu_a_minr")
+        s_sort = st.selectbox(
+            "จัดเรียงโดย",
+            ["วันที่ (ใหม่→เก่า)", "วันที่ (เก่า→ใหม่)", "คะแนน (สูง→ต่ำ)", "คะแนน (ต่ำ→สูง)"],
+            index=0, key="stu_a_sort"
+        )
 
-        # กรองตามตัวเลือก
-        if sel_type:
-            items = [r for r in items if r.get("course_type") == sel_type]
-        if sel_fac:
-            items = [r for r in items if r.get("faculty") == sel_fac]
-        if c != "ทั้งหมด":
-            code = c.split(" ")[0]
-            items = [r for r in items if r.get("course_code") == code]
-        if q:
-            ql = q.lower().strip()
-            items = [r for r in items if ql in (r.get("text") or "").lower()
-                     or ql in (r.get("course_name") or "").lower()]
+        # apply filters & sort เหมือนแอดมิน แล้วเรนเดอร์แบบ grouped
+        sf = admin_apply_filters(approved_only, sel_type2, sel_fac2, s_course, s_q, s_minr)
+        sf = admin_sort_items(sf, s_sort)
+        render_grouped(sf, pending_mode=False)  # ไม่มีปุ่มอนุมัติ/ปฏิเสธในฝั่งนักศึกษา
 
-        # สรุป/ตาราง (ถ้าอยากคงแบบ DataFrame ก็เพิ่มส่วนนี้ได้)
-        # import pandas as pd
-        # if items:
-        #     df = pd.DataFrame([{
-        #         "ประเภท": COURSE_TYPES.get(r.get("course_type",""), r.get("course_type","")),
-        #         "คณะ": f"{r.get('faculty','-')} - {r.get('faculty_name','-')}",
-        #         "รายวิชา": f"{r.get('course_code','')} — {r.get('course_name','')}",
-        #         "คะแนน": r.get("rating"),
-        #         "ผู้รีวิว": r.get("author"),
-        #         "วันที่": r.get("created_at"),
-        #         "รีวิว": r.get("text",""),
-        #     } for r in items])
-        #     st.dataframe(df, use_container_width=True)
-
-        # แสดงรายการรีวิวแบบการ์ด (แนวเดิมของคุณ)
-        if not items:
-            if sel_type and sel_fac and not course_list_b:
-                st.info("คณะนี้ยังไม่มีรายวิชาในแค็ตตาล็อก (เพิ่มได้ภายหลัง)")
-            else:
-                st.info("ยังไม่มีรีวิวที่ผ่านการอนุมัติตามเงื่อนไขที่เลือก")
-        else:
-            for r in sorted(items, key=lambda x: x.get("created_at", ""), reverse=True):
-                with st.container(border=True):
-                    # หัวการ์ด: รหัส + ชื่อวิชา
-                    st.markdown(
-                        f"<span class='codepill'>{r.get('course_code', '')}</span> "
-                        f"<b>{r.get('course_name', '')}</b>",
-                        unsafe_allow_html=True,
-                    )
-
-                    # แสดงประเภท/คณะ
-                    st.markdown(
-                        f"ประเภท: {COURSE_TYPES.get(r.get('course_type', ''), r.get('course_type', ''))} • "
-                        f"คณะ: {r.get('faculty', '-')} - {r.get('faculty_name', '-')}"
-                    )
-
-                    # 🔹 เพิ่มบรรทัดหน่วยกิต/การตัดเกรด/อัปเดตล่าสุด (ใช้ COURSE_LUT)
-                    info = COURSE_LUT.get(r.get("course_code", ""), {})
-                    meta2 = []
-                    if info.get("credit"):
-                        meta2.append(f"หน่วยกิต: {info['credit']}")
-                    if info.get("prereq"):
-                        meta2.append(f"เงื่อนไขรายวิชา: {info['prereq']}")
-                    if info.get("grading"):
-                        label = {"ABC": "เกรด A–F", "OSU": "O/S/U"}.get(info["grading"], info["grading"])
-                        meta2.append(f"การตัดเกรด: {info['grading']} ({label})")
-                    if info.get("updated_at"):
-                        meta2.append(f"อัปเดตล่าสุด: {info['updated_at']}")
-                    if meta2:
-                        st.caption(" • ".join(meta2))
-
-                    # เพิ่มบรรทัด prerequisite และคำอธิบาย
-                    if info.get("prereq"):
-                        st.caption(f"เงื่อนไขก่อนลงทะเบียน: {info['prereq']}")
-                    if info.get("desc_th") or info.get("desc_en"):
-                        with st.container(border=True):
-                            if info.get("desc_th"):
-                                st.markdown("**คำอธิบายรายวิชา (ภาษาไทย)**")
-                                st.write(info["desc_th"])
-                            if info.get("desc_en"):
-                                st.markdown("<span class='muted'><b>Course Description (English)</b></span>",
-                                            unsafe_allow_html=True)
-                                st.write(info["desc_en"])
-
-                    # คะแนน + ผู้รีวิว + วันที่
-                    st.markdown(
-                        f"ให้คะแนน: <span class='star'>{star_str(int(r.get('rating', 0)))}</span>  "
-                        f"<span class='muted'>โดย `{review_author(r)}` • วันที่ {r.get('created_at', '')}</span>",
-                        unsafe_allow_html=True,
-                    )
-
-                    # เนื้อหารีวิว
-                    if r.get("text"):
-                        st.markdown("—")
-                        st.write(r["text"])
 
 # -----------------------------
 # -----------------------------
