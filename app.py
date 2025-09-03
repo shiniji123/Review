@@ -31,7 +31,7 @@ Run: streamlit run app_all_in_one.py
 # -----------------------------
 # Page & basic styles
 # -----------------------------
-st.set_page_config(page_title="Uni Course Reviews — All-in-One", page_icon="⭐", layout="wide")
+st.set_page_config(page_title="MU Course Reviews — All-in-One", page_icon="⭐", layout="wide")
 st.markdown(
     """
     <style>
@@ -91,7 +91,7 @@ FACULTIES_BY_TYPE = {
 }
 
 # ตัวอย่างรายวิชาให้เลือกต่อคณะ (ปรับเพิ่ม/แก้ไขได้)
-COURSE_CATALOG = {
+COURSE_CATALOG_BY_TYPE = {
     "GE": {
         "SI": [
             {"code": "GE-SI101", "name": "การแพทย์พื้นฐานสำหรับประชาชน"},
@@ -130,11 +130,11 @@ COURSE_CATALOG = {
     }
 }
 
-def list_faculties_by_type(course_type: str):
+def list_faculties_by_type(course_type: str) -> dict:
     return FACULTIES_BY_TYPE.get(course_type, {})
 
-def list_courses(course_type: str, faculty_code: str):
-    return COURSE_CATALOG.get(course_type, {}).get(faculty_code, [])
+def list_courses(course_type: str, faculty_code: str) -> list:
+    return COURSE_CATALOG_BY_TYPE.get(course_type, {}).get(faculty_code, [])
 
 
 
@@ -150,156 +150,39 @@ USERS: Dict[str, Dict[str, str]] = {
 # ==============================================
 # Faculty / Department / Course Catalog (Prototype)
 # ==============================================
-FACULTIES: Dict[str, Dict] = {
-    "SCI": {
-        "name": "คณะวิทยาศาสตร์",
-        "departments": {
-            "SCMA": "สาขาวิชาคณิตศาสตร์",
-            "SCPL": "สาขาวิชาพฤกษศาสตร์",
-            "SCPY": "สาขาวิชาฟิสิกส์",
-            "SCCH": "สาขาวิชาเคมี",
-            "SCBT": "สาขาวิชาเทคโนโลยีชีวภาพ",
-            "SCBI": "สาขาวิชาชีววิทยา",
-            "SCIM": "สาขาวิชาคณิตศาสตร์อุตสาหการ (นานาชาติ)",
-            "SCAS": "สาขาวิชาคณิตศาสตร์ประกันภัย (นานาชาติ)",
-        },
-    },
-    # ภายหลังเพิ่มคณะอื่น ๆ ได้เช่น "ENG": {"name": "คณะวิศวกรรมศาสตร์", ...}
-}
-
-# COURSE_CATALOG[faculty_code][dept_code][year] = list of course dicts
-COURSE_CATALOG: Dict[str, Dict[str, Dict[int, List[Dict]]]] = {
-    "SCI": {
-        "SCMA": {
-            1: [
-                {"code": "2101101", "name": "Calculus I", "desc_th": "ลิมิต อนุพันธ์ ฟังก์ชันตัวแปรเดียว",
-                 "desc_en": "Limits and derivatives of single-variable functions.", "credit": 3, "prereq": None},
-            ],
-            2: [
-                {"code": "2101201", "name": "Calculus II", "desc_th": "อินทิกรัล อนุกรมอนันต์ เทคนิคการอินทิเกรต",
-                 "desc_en": "Integration techniques and infinite series.", "credit": 3, "prereq": "2101101"},
-                {"code": "2102201", "name": "ELECT ENG MATH I",
-                 "desc_th": "สมการเชิงอนุพันธ์อันดับหนึ่งและสูงกว่า อนุกรมผลต่าง สมการเชิงอนุพันธ์ย่อย ฟูริเยร์ซีรีส์/ทรานส์ฟอร์ม ลาปลาซทรานส์ฟอร์ม Z-transform ปัญหาค่าเริ่มต้น/ขอบเขต ประยุกต์ในวิศวกรรมไฟฟ้า",
-                 "desc_en": "First- and higher-order ODEs; difference equations; Fourier series/transform; Laplace; Z-transform; PDEs; boundary-value problems; EE applications.",
-                 "credit": 3, "prereq": "2301108"},
-            ],
-            3: [
-                {"code": "2102301", "name": "Linear Algebra", "desc_th": "เวกเตอร์ เมทริกซ์ พีชคณิตเชิงเส้นประยุกต์",
-                 "desc_en": "Vectors, matrices, eigenvalues/eigenvectors; applications.", "credit": 3, "prereq": None},
-            ],
-            4: [
-                {"code": "2102401", "name": "Numerical Methods",
-                 "desc_th": "วิธีเชิงตัวเลขสำหรับสมการ อนุกรม และอินทิกรัล",
-                 "desc_en": "Numerical solutions for equations/ODEs/integration.", "credit": 3, "prereq": "2102301"},
-            ],
-        },
-        "SCPL": {
-            1: [{"code": "2103101", "name": "Introduction to Botany",
-                 "desc_th": "พื้นฐานพฤกษศาสตร์ อนุกรมวิธาน โครงสร้างพืช", "desc_en": "Plant biology fundamentals.",
-                 "credit": 3, "prereq": None}],
-            2: [{"code": "2103201", "name": "Plant Physiology", "desc_th": "สรีรวิทยาพืช การสังเคราะห์แสง การลำเลียง",
-                 "desc_en": "Photosynthesis, transport, plant hormones.", "credit": 3, "prereq": "2103101"}],
-            3: [{"code": "2103301", "name": "Plant Ecology", "desc_th": "นิเวศวิทยาพืช ระบบนิเวศ",
-                 "desc_en": "Plant ecology and ecosystems.", "credit": 3, "prereq": None}],
-            4: [{"code": "2103401", "name": "Plant Biotechnology", "desc_th": "เทคโนโลยีชีวภาพพืชและการประยุกต์",
-                 "desc_en": "Plant tissue culture and biotech applications.", "credit": 3, "prereq": "2103201"}],
-        },
-        "SCPY": {
-            1: [{"code": "2104101", "name": "Mechanics I", "desc_th": "การเคลื่อนที่ กฎของนิวตัน งานและพลังงาน",
-                 "desc_en": "Kinematics, Newton's laws, energy.", "credit": 3, "prereq": None}],
-            2: [{"code": "2104201", "name": "Electromagnetism", "desc_th": "สนามไฟฟ้า สนามแม่เหล็ก สมการแมกซ์เวลล์",
-                 "desc_en": "E&M and Maxwell's equations.", "credit": 3, "prereq": "2104101"}],
-            3: [{"code": "2104301", "name": "Quantum Physics", "desc_th": "พื้นฐานกลศาสตร์ควอนตัม",
-                 "desc_en": "Intro to quantum mechanics.", "credit": 3, "prereq": None}],
-            4: [{"code": "2104401", "name": "Statistical Physics", "desc_th": "ฟิสิกส์สถิติและอุณหพลศาสตร์",
-                 "desc_en": "Statistical mechanics and thermodynamics.", "credit": 3, "prereq": None}],
-        },
-        "SCCH": {
-            1: [{"code": "2105101", "name": "General Chemistry", "desc_th": "โครงสร้างอะตอม ตารางธาตุ พันธะเคมี",
-                 "desc_en": "Atomic structure, bonding.", "credit": 3, "prereq": None}],
-            2: [{"code": "2105201", "name": "Organic Chemistry",
-                 "desc_th": "โครงสร้าง/การเรียกชื่อ/ปฏิกิริยาของสารอินทรีย์",
-                 "desc_en": "Organic molecules and reactions.", "credit": 3, "prereq": "2105101"}],
-            3: [{"code": "2105301", "name": "Physical Chemistry", "desc_th": "จลนพลศาสตร์เคมี อุณหพลศาสตร์",
-                 "desc_en": "Kinetics and thermodynamics.", "credit": 3, "prereq": None}],
-            4: [{"code": "2105401", "name": "Analytical Chemistry", "desc_th": "การวิเคราะห์เชิงปริมาณ/เชิงคุณภาพ",
-                 "desc_en": "Quantitative/qualitative analysis.", "credit": 3, "prereq": None}],
-        },
-        "SCBT": {
-            1: [{"code": "2106101", "name": "Cell Biology for Biotech",
-                 "desc_th": "โครงสร้างเซลล์ เมแทบอลิซึม ชีววิทยาระดับโมเลกุล",
-                 "desc_en": "Cell structure & molecular basics.", "credit": 3, "prereq": None}],
-            2: [{"code": "2106201", "name": "Biochemistry", "desc_th": "โปรตีน เอนไซม์ วิถีเมแทบอลิซึม",
-                 "desc_en": "Proteins, enzymes, metabolism.", "credit": 3, "prereq": "2105101"}],
-            3: [{"code": "2106301", "name": "Microbiology", "desc_th": "จุลชีววิทยาและเทคนิคห้องปฏิบัติการ",
-                 "desc_en": "Microbiology & lab techniques.", "credit": 3, "prereq": None}],
-            4: [{"code": "2106401", "name": "Bioinformatics", "desc_th": "ชีวสารสนเทศและการประมวลผลข้อมูลชีวภาพ",
-                 "desc_en": "Bioinformatics fundamentals.", "credit": 3, "prereq": None}],
-        },
-        "SCBI": {
-            1: [{"code": "2107101", "name": "General Biology", "desc_th": "พื้นฐานชีววิทยาของเซลล์และสิ่งมีชีวิต",
-                 "desc_en": "Cell/organismal biology.", "credit": 3, "prereq": None}],
-            2: [{"code": "2107201", "name": "Genetics", "desc_th": "หลักการถ่ายทอดพันธุกรรมและพันธุศาสตร์โมเลกุล",
-                 "desc_en": "Genetics principles.", "credit": 3, "prereq": "2107101"}],
-            3: [{"code": "2107301", "name": "Ecology", "desc_th": "นิเวศวิทยาและสิ่งแวดล้อม",
-                 "desc_en": "Ecology and environment.", "credit": 3, "prereq": None}],
-            4: [{"code": "2107401", "name": "Molecular Biology", "desc_th": "ชีววิทยาระดับโมเลกุลขั้นสูง",
-                 "desc_en": "Advanced molecular biology.", "credit": 3, "prereq": None}],
-        },
-        "SCIM": {
-            1: [{"code": "2108101", "name": "Programming I", "desc_th": "พื้นฐานการเขียนโปรแกรม",
-                 "desc_en": "Intro to programming.", "credit": 3, "prereq": None}],
-            2: [{"code": "2108201", "name": "Probability & Statistics", "desc_th": "ทฤษฎีความน่าจะเป็นและสถิติ",
-                 "desc_en": "Probability and statistics.", "credit": 3, "prereq": None}],
-            3: [{"code": "2109301", "name": "Operations Research", "desc_th": "การโปรแกรมเชิงเส้นและวิธีเหมาะที่สุด",
-                 "desc_en": "Linear programming & optimization.", "credit": 3, "prereq": "2101201"}],
-            4: [{"code": "2109401", "name": "Industrial Mathematics",
-                 "desc_th": "คณิตศาสตร์ประยุกต์ในอุตสาหกรรมและวิศวกรรม", "desc_en": "Applied math in industry.",
-                 "credit": 3, "prereq": "2109301"}],
-        },
-        "SCAS": {
-            1: [{"code": "2108001", "name": "Intro to Actuarial Science",
-                 "desc_th": "แนะนำวิชาชีพนักคณิตศาสตร์ประกันภัย", "desc_en": "Actuarial profession overview.",
-                 "credit": 3, "prereq": None}],
-            2: [{"code": "2108202", "name": "Financial Mathematics", "desc_th": "ดอกเบี้ย เงินงวด มูลค่าปัจจุบัน",
-                 "desc_en": "Interest theory and annuities.", "credit": 3, "prereq": None}],
-            3: [{"code": "2108301", "name": "Actuarial Mathematics I", "desc_th": "ตารางมรณะ การประเมินความเสี่ยง",
-                 "desc_en": "Life tables and risk.", "credit": 3, "prereq": "2108202"}],
-            4: [{"code": "2108401", "name": "Risk Modeling", "desc_th": "แบบจำลองความเสี่ยงและการประกันภัย",
-                 "desc_en": "Risk models in insurance.", "credit": 3, "prereq": "2108301"}],
-        },
-    }
-}
-
-
 @lru_cache(maxsize=1)
-def flatten_catalog() -> List[Dict]:
-    rows: List[Dict] = []
-    for fac, fac_data in COURSE_CATALOG.items():
-        fac_name = FACULTIES.get(fac, {}).get("name", fac)
-        dept_map = FACULTIES.get(fac, {}).get("departments", {})
-        for dept, years in fac_data.items():
-            dept_name = dept_map.get(dept, dept)
-            for year, courses in years.items():
-                for c in courses:
-                    rows.append({
-                        "faculty": fac,
-                        "faculty_name": fac_name,
-                        "department": dept,
-                        "department_name": dept_name,
-                        "year": int(year),
-                        "code": c["code"],
-                        "name": c["name"],
-                        "desc_th": c.get("desc_th", ""),
-                        "desc_en": c.get("desc_en", ""),
-                        "credit": c.get("credit", None),
-                        "prereq": c.get("prereq", None),
-                    })
-    rows.sort(key=lambda r: (r["faculty"], r["department"], r["year"], r["code"]))
+# สร้างรายการคอร์สแบบ "แบน" จากคาแทล็อกใหม่ (ประเภท → คณะ → รายวิชา)
+def flatten_catalog() -> list[dict]:
+    rows: list[dict] = []
+    for ctype, facs in COURSE_CATALOG_BY_TYPE.items():           # GE / FE / ME
+        fac_map = FACULTIES_BY_TYPE.get(ctype, {})
+        for fac_code, courses in facs.items():                   # SI / PY / SC / ...
+            fac_name = fac_map.get(fac_code, fac_code)
+            for c in courses:                                    # {"code": "...", "name": "...", ...}
+                rows.append({
+                    # ฟิลด์อ้างอิงตามโครงใหม่
+                    "course_type": ctype,
+                    "faculty": fac_code,
+                    "faculty_name": fac_name,
+
+                    # ฟิลด์ที่โค้ดบางส่วนเก่ายังเรียกใช้ — ให้เว้นไว้/เป็นค่าว่างเพื่อกันพัง
+                    "department": "",
+                    "department_name": "",
+                    "year": 0,
+
+                    # เมทาดาต้ารายวิชา (คงชื่อ key 'code','name' ตามเดิม)
+                    "code": c["code"],
+                    "name": c["name"],
+                    "desc_th": c.get("desc_th", ""),
+                    "desc_en": c.get("desc_en", ""),
+                    "credit": c.get("credit"),
+                    "prereq": c.get("prereq"),
+                })
+    rows.sort(key=lambda r: (r["course_type"], r["faculty"], r["code"]))
     return rows
 
-
 ALL_COURSES = flatten_catalog()
+
 
 # -----------------------------
 # Storage helpers (Local JSON or Google Sheets via Streamlit Cloud)
