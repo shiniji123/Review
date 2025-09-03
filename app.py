@@ -47,6 +47,95 @@ APP_TITLE = "ระบบรีวิวรายวิชามหาวิท�
 DATA_FILE = os.path.join("data", "data.json")
 MIN_PASSWORD_LEN = 8
 
+# -----------------------------
+# Course Types & Faculty Catalogs
+# -----------------------------
+COURSE_TYPES = {
+    "GE": "รายวิชาศึกษาทั่วไป",
+    "FE": "รายวิชาเสรี",
+    "ME": "รายวิชาเฉพาะเลือก (SC - คณิตศาสตร์)",
+}
+
+FACULTIES_BY_TYPE = {
+    # รายวิชาศึกษาทั่วไป
+    "GE": {
+        "SI": "คณะแพทยศาสตร์ศิริราชพยาบาล",
+        "PY": "คณะเภสัชศาสตร์",
+        "SC": "คณะวิทยาศาสตร์",
+        "NS": "คณะพยาบาลศาสตร์",
+        "RA": "คณะแพทยศาสตร์โรงพยาบาลรามาธิบดี",
+        "EG": "คณะวิศวกรรมศาสตร์",
+        "EN": "คณะสิ่งแวดล้อมและทรัพยากรศาสตร์",
+        "SH": "คณะสังคมศาสตร์และมนุษย์ศาสตร์",
+        "LA": "คณะศิลปศาสตร์",
+        "SP": "วิทยาลัยวิทยาศาสตร์และเทคโนโลยีการกีฬา",
+        "CF": "สถาบันแห่งชาติเพื่อการพัฒนาเด็กและครอบครัว",
+        "HP": "โครงการจัดตั้งสถาบันสิทธิมนุษยชนและสันติศึกษา",
+        "IL": "สถาบันนวัตกรรมการเรียนรู้",
+        "LC": "สถาบันวิจัยภาษาและวัฒนธรรมเอเชีย",
+        "MU": "มหาวิทยาลัยมหิดล (ศูนย์ส่งเสริมการเรียนรู้ฯ)",
+        "PR": "สถาบันวิจัยประชากรและสังคม",
+    },
+    # รายวิชาเสรี
+    "FE": {
+        "SH": "คณะสังคมศาสตร์และมนุษยศาสตร์",
+        "LA": "คณะศิลปศาสตร์",
+        "CR": "วิทยาลัยศาสนศึกษา",
+        "NW": "โครงการจัดตั้งวิทยาเขตนครสวรรค์",
+    },
+    # รายวิชาเฉพาะเลือก — ทำเฉพาะ SC (คณิตศาสตร์)
+    "ME": {
+        "SC": "คณะวิทยาศาสตร์",
+    }
+}
+
+# ตัวอย่างรายวิชาให้เลือกต่อคณะ (ปรับเพิ่ม/แก้ไขได้)
+COURSE_CATALOG = {
+    "GE": {
+        "SI": [
+            {"code": "GE-SI101", "name": "การแพทย์พื้นฐานสำหรับประชาชน"},
+            {"code": "GE-SI102", "name": "รู้ทันสุขภาพ"},
+        ],
+        "PY": [
+            {"code": "GE-PY101", "name": "เภสัชวิทยาสำหรับชีวิตประจำวัน"},
+        ],
+        "SC": [
+            {"code": "GE-SC101", "name": "วิทยาศาสตร์ในชีวิตประจำวัน"},
+            {"code": "GE-SC102", "name": "โลกและสิ่งแวดล้อม"},
+        ],
+        # ... ใส่เพิ่มได้ตามคณะด้านบน
+    },
+    "FE": {
+        "SH": [
+            {"code": "FE-SH201", "name": "สังคมไทยร่วมสมัย"},
+        ],
+        "LA": [
+            {"code": "FE-LA201", "name": "ภาษาและวัฒนธรรมอาเซียน"},
+        ],
+        "CR": [
+            {"code": "FE-CR201", "name": "ศาสนาและสังคม"},
+        ],
+        "NW": [
+            {"code": "FE-NW201", "name": "นวัตกรรมท้องถิ่นศึกษา"},
+        ],
+    },
+    "ME": {
+        "SC": [
+            {"code": "ME-SCMA301", "name": "ทฤษฎีจำนวนเบื้องต้น (Mathematics Elective)"},
+            {"code": "ME-SCMA302", "name": "คอมบินาทอริกส์เบื้องต้น"},
+            {"code": "ME-SCMA303", "name": "สมการเชิงอนุพันธ์ขั้นสูง"},
+            {"code": "ME-SCMA304", "name": "การวิเคราะห์เชิงตัวเลข"},
+        ],
+    }
+}
+
+def list_faculties_by_type(course_type: str):
+    return FACULTIES_BY_TYPE.get(course_type, {})
+
+def list_courses(course_type: str, faculty_code: str):
+    return COURSE_CATALOG.get(course_type, {}).get(faculty_code, [])
+
+
 
 # -----------------------------
 # Auth (prototype)
@@ -217,9 +306,15 @@ ALL_COURSES = flatten_catalog()
 
 # Columns schema used for cloud storage
 HEADERS = [
-    "id", "faculty", "faculty_name", "department", "department_name", "year",
-    "course_code", "course_name", "rating", "text", "author", "created_at", "status"
+    "id",
+    "course_type",           # <— เพิ่มใหม่
+    "faculty","faculty_name",
+    "department","department_name",
+    "year",
+    "course_code","course_name",
+    "rating","text","author","created_at","status"
 ]
+
 
 
 class LocalJSONStorage:
@@ -456,11 +551,17 @@ class GoogleSheetsStorage(GoogleSheetsStorage):  # type: ignore[misc]
         self._ensure_headers(self.ws_users, USERS_HEADERS)
         self._ensure_headers(self.ws_tokens, TOKENS_HEADERS)
 
-    def _ensure_headers(self, ws, headers):
+    def _ensure_headers(self, ws):
         hdr = ws.row_values(1)
-        if hdr != headers:
-            ws.clear()
-            ws.update("A1", [headers])
+        if not hdr:
+            ws.update("A1", [HEADERS])
+            return
+        # ต่อหัวตารางให้ครบถ้าขาด โดยไม่ล้างข้อมูล
+        if hdr != HEADERS:
+            missing = [h for h in HEADERS if h not in hdr]
+            if missing:
+                new_hdr = hdr + missing
+                ws.update(f"A1:{chr(64 + len(new_hdr))}1", [new_hdr])
 
     # keep existing review methods from base class; add users/tokens I/O
     def load_users(self) -> List[Dict]:
@@ -973,34 +1074,54 @@ def page_student(data: Dict):
 
     # Submit tab
     with t_submit:
-        st.subheader("เลือกวิชาเพื่อรีวิว (แสดงทั้งหมดก่อนแล้วค่อยกรอง)")
-        colA, colB, colC = st.columns(3)
-        with colA:
-            sel_fac = st.selectbox("คณะ", faculty_options(), index=0, key="stu_fac")
-        with colB:
-            sel_dept = st.selectbox("สาขา", department_options(sel_fac), index=0, key="stu_dept")
-        with colC:
-            sel_year = st.selectbox("ชั้นปี", year_options(sel_fac, sel_dept), index=0, key="stu_year")
+        # --- NEW: ตัวกรองแบบ ประเภท → คณะ → รายวิชา ---
+        st.subheader("เลือกประเภท / คณะ / รายวิชา")
 
-        filtered_courses = filter_courses(sel_fac, sel_dept, sel_year)
-        if not filtered_courses:
-            st.info("ยังไม่พบวิชาตามเงื่อนไขที่เลือก — โปรดลองเปลี่ยนตัวกรอง")
-            return
+        # 1) ประเภทของรายวิชา
+        type_keys = list(COURSE_TYPES.keys())
+        type_ix = st.selectbox(
+            "ประเภทของรายวิชา",
+            options=list(range(len(type_keys))),
+            format_func=lambda i: COURSE_TYPES[type_keys[i]],
+            key="stu_type_ix",
+        )
+        sel_type = type_keys[type_ix]
 
-        labels = [f"[{r['faculty']}/{r['department']}] ปี {r['year']} — {r['code']} {r['name']}" for r in
-                  filtered_courses]
-        idx = st.selectbox("เลือกรายวิชา", range(len(filtered_courses)), format_func=lambda i: labels[i],
-                           key="stu_course")
-        course = filtered_courses[idx]
+        # 2) คณะที่เปิดสอน (ตามประเภท)
+        fac_map = list_faculties_by_type(sel_type)
+        fac_codes = list(fac_map.keys())
+        fac_ix = st.selectbox(
+            "คณะที่เปิดสอน",
+            options=list(range(len(fac_codes))),
+            format_func=lambda i: f"{fac_codes[i]} - {fac_map[fac_codes[i]]}",
+            key="stu_fac_ix",
+        )
+        fac_code = fac_codes[fac_ix]
+        fac_name = fac_map[fac_code]
 
-        # Course meta box
+        # 3) รายวิชา (ตามประเภท + คณะ)
+        courses = list_courses(sel_type, fac_code)
+        if not courses:
+            st.info("คณะนี้ยังไม่มีรายวิชาในแค็ตตาล็อก (เพิ่มภายหลังได้)")
+            st.stop()
+
+        course_ix = st.selectbox(
+            "เลือกรายวิชา",
+            options=list(range(len(courses))),
+            format_func=lambda i: f"{courses[i]['code']} {courses[i]['name']}",
+            key="stu_course_ix",
+        )
+        course = courses[course_ix]
+
+        # กล่องข้อมูลรายวิชา
         st.markdown(
             f"<div class='box'>"
             f"<div><span class='codepill'>{course['code']}</span> <b>{course['name']}</b></div>"
-            f"<div class='muted'>คณะ: {course['faculty_name']} • สาขา: {course['department_name']} • ชั้นปี: {course['year']} • หน่วยกิต: {course.get('credit', '-')}</div>"
+            f"<div class='muted'>ประเภท: {COURSE_TYPES[sel_type]} • คณะ: {fac_code} - {fac_name}</div>"
             f"</div>",
             unsafe_allow_html=True,
         )
+
         if course.get("prereq"): st.caption(f"เงื่อนไขรายวิชา: {course['prereq']}")
         if course.get("desc_th"): st.write(course["desc_th"])
         if course.get("desc_en"): st.markdown(f"<span class='muted'>{course['desc_en']}</span>", unsafe_allow_html=True)
@@ -1017,15 +1138,19 @@ def page_student(data: Dict):
             auth = st.session_state.get("auth", {})
             new_r = {
                 "id": str(uuid.uuid4()),
-                "faculty": course["faculty"], "faculty_name": course["faculty_name"],
-                "department": course["department"], "department_name": course["department_name"],
-                "year": int(course["year"]),
+                "course_type": sel_type,  # <— ใหม่: ประเภทวิชา
+                "faculty": fac_code, "faculty_name": fac_name,
+                "department": "", "department_name": "",  # ไม่ใช้แล้ว
+                "year": "",  # ไม่ใช้แล้ว
                 "course_code": course["code"], "course_name": course["name"],
-                "rating": int(rating), "text": (review_text or "").strip(),
-                "author": (auth.get("email") or auth.get("username", "anonymous")),
+                "rating": int(rating),
+                "text": (review_text or "").strip(),
+                "author": (st.session_state.get("auth", {}).get("email")
+                           or st.session_state.get("auth", {}).get("username", "anonymous")),
                 "created_at": datetime.now().isoformat(timespec="seconds"),
                 "status": "pending",
             }
+
             pending.append(new_r)
             save_data(data)
             st.success("ส่งรีวิวเรียบร้อย! รอผู้ดูแลอนุมัติ")
@@ -1033,55 +1158,84 @@ def page_student(data: Dict):
 
     # Browse tab
     with t_browse:
-        st.subheader("ดูรีวิวที่อนุมัติแล้ว (กรองคณะ/สาขา/ชั้นปี/รายวิชา)")
-        col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
-            f_fac = st.selectbox("คณะ", faculty_options(), index=0, key="b_fac")
-        with col2:
-            f_dept = st.selectbox("สาขา", department_options(f_fac), index=0, key="b_dept")
-        with col3:
-            f_year = st.selectbox("ชั้นปี", year_options(f_fac, f_dept), index=0, key="b_year")
-        master_courses = filter_courses(f_fac, f_dept, f_year)
-        course_names = ["ทั้งหมด"] + [f"{r['code']} {r['name']}" for r in master_courses]
-        with col4:
-            f_course = st.selectbox("รายวิชา", course_names, index=0, key="b_course")
-        with col5:
-            q = st.text_input("ค้นหาในข้อความรีวิว", key="b_q")
+        # ---- BROWSE: ดูรีวิวที่อนุมัติแล้ว (แทนทั้งก้อนเดิมนี้) ----
+        st.subheader("ดูรีวิวที่อนุมัติแล้ว (กรองตาม ประเภท/คณะ/รายวิชา)")
 
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 1.2])
+
+        # 1) ประเภท
+        with col1:
+            type_choices = ["ทั้งหมด"] + list(COURSE_TYPES.keys())
+            t = st.selectbox("ประเภท", type_choices, key="b_type")
+            sel_type = None if t == "ทั้งหมด" else t
+
+        # 2) คณะ (ขึ้นกับประเภท)
+        with col2:
+            fac_map_b = list_faculties_by_type(sel_type) if sel_type else {}
+            fac_codes_b = ["ทั้งหมด"] + (list(fac_map_b.keys()) if fac_map_b else [])
+            f = st.selectbox("คณะ", fac_codes_b, key="b_fac2")
+            sel_fac = None if f == "ทั้งหมด" else f
+
+        # 3) รายวิชา (ขึ้นกับประเภท+คณะ)
+        with col3:
+            course_list_b = list_courses(sel_type, sel_fac) if (sel_type and sel_fac) else []
+            course_opts_b = ["ทั้งหมด"] + [f"{c['code']} {c['name']}" for c in course_list_b]
+            c = st.selectbox("รายวิชา", course_opts_b, key="b_course2")
+
+        # 4) ค้นหา
+        with col4:
+            q = st.text_input("ค้นหาในข้อความรีวิว", key="b_q2")
+
+        # ดึงเฉพาะอนุมัติแล้ว
         items = [r for r in approved if r.get("status") == "approved"]
-        if f_fac != "ทั้งหมด": items = [r for r in items if r.get("faculty_name") == f_fac]
-        if f_dept != "ทั้งหมด": items = [r for r in items if r.get("department_name") == f_dept]
-        if f_year != "ทั้งหมด": items = [r for r in items if int(r.get("year", 0)) == int(f_year)]
-        if f_course != "ทั้งหมด":
-            code = f_course.split(" ")[0]
+
+        # กรองตามตัวเลือก
+        if sel_type:
+            items = [r for r in items if r.get("course_type") == sel_type]
+        if sel_fac:
+            items = [r for r in items if r.get("faculty") == sel_fac]
+        if c != "ทั้งหมด":
+            code = c.split(" ")[0]
             items = [r for r in items if r.get("course_code") == code]
         if q:
             ql = q.lower().strip()
-            items = [r for r in items if ql in (r.get("text") or "").lower()]
+            items = [r for r in items if ql in (r.get("text") or "").lower()
+                     or ql in (r.get("course_name") or "").lower()]
 
-        stats = compute_course_stats(items)
-        if stats:
-            st.markdown("#### สรุปคะแนนเฉลี่ย (ผลจากตัวกรอง)")
-            cols = st.columns(3);
-            i = 0
-            for (y, cname), s in sorted(stats.items(), key=lambda x: (x[0][0], x[0][1])):
-                with cols[i % 3]:
-                    st.markdown(f"**ปี {y}: {cname}**")
-                    st.markdown(f"ค่าเฉลี่ย: **{s['avg']:.2f}** / 5")
-                    st.progress(min(1.0, s['avg'] / 5.0))
-                i += 1
-            st.divider()
+        # สรุป/ตาราง (ถ้าอยากคงแบบ DataFrame ก็เพิ่มส่วนนี้ได้)
+        # import pandas as pd
+        # if items:
+        #     df = pd.DataFrame([{
+        #         "ประเภท": COURSE_TYPES.get(r.get("course_type",""), r.get("course_type","")),
+        #         "คณะ": f"{r.get('faculty','-')} - {r.get('faculty_name','-')}",
+        #         "รายวิชา": f"{r.get('course_code','')} — {r.get('course_name','')}",
+        #         "คะแนน": r.get("rating"),
+        #         "ผู้รีวิว": r.get("author"),
+        #         "วันที่": r.get("created_at"),
+        #         "รีวิว": r.get("text",""),
+        #     } for r in items])
+        #     st.dataframe(df, use_container_width=True)
 
+        # แสดงรายการรีวิวแบบการ์ด (แนวเดิมของคุณ)
         if not items:
-            st.info("ยังไม่มีรีวิวที่ผ่านการอนุมัติในเงื่อนไขที่เลือก")
+            # ป้องกันเคสเลือกประเภท/คณะแล้วไม่มีวิชาในแค็ตตาล็อก
+            if sel_type and sel_fac and not course_list_b:
+                st.info("คณะนี้ยังไม่มีรายวิชาในแค็ตตาล็อก (เพิ่มได้ภายหลัง)")
+            else:
+                st.info("ยังไม่มีรีวิวที่ผ่านการอนุมัติตามเงื่อนไขที่เลือก")
         else:
-            for r in sorted(items, key=lambda x: x["created_at"], reverse=True):
+            for r in sorted(items, key=lambda x: x.get("created_at", ""), reverse=True):
                 with st.container(border=True):
                     st.markdown(
-                        f"<span class='codepill'>{r.get('course_code', '')}</span> <b>{r.get('course_name', '')}</b>",
-                        unsafe_allow_html=True)
+                        f"<span class='codepill'>{r.get('course_code', '')}</span> "
+                        f"<b>{r.get('course_name', '')}</b>",
+                        unsafe_allow_html=True,
+                    )
+                    # โครงใหม่: โชว์ประเภท/คณะ (ไม่โชว์สาขา/ชั้นปีแล้ว)
                     st.markdown(
-                        f"คณะ: {r.get('faculty_name', '-')} • สาขา: {r.get('department_name', '-')} • ปี: {r.get('year', '-')}")
+                        f"ประเภท: {COURSE_TYPES.get(r.get('course_type', ''), r.get('course_type', ''))} • "
+                        f"คณะ: {r.get('faculty', '-')} - {r.get('faculty_name', '-')}"
+                    )
                     st.markdown(
                         f"ให้คะแนน: <span class='star'>{star_str(int(r.get('rating', 0)))}</span>  "
                         f"<span class='muted'>โดย `{r.get('author', '?')}` • วันที่ {r.get('created_at', '')}</span>",
@@ -1090,11 +1244,153 @@ def page_student(data: Dict):
                     if r.get("text"):
                         st.markdown("—")
                         st.write(r["text"])
-
+        # ---- /BROWSE ----
 
 # -----------------------------
 # Admin helpers (filters + grouping)
 # -----------------------------
+# -----------------------------
+# Admin helpers (filters + grouping)  [REPLACED]
+# -----------------------------
+from typing import List, Dict, Optional, Tuple
+from collections import defaultdict
+
+def admin_type_options(items: List[Dict]) -> List[str]:
+    """คืนค่าเป็น list ของคีย์ประเภทที่มีอยู่จริงใน items เช่น ['GE','FE','ME']"""
+    types = sorted({r.get("course_type") for r in items if r.get("course_type")})
+    return ["ทั้งหมด"] + types
+
+def admin_faculty_map(items: List[Dict], sel_type: Optional[str] = None) -> Dict[str, str]:
+    """สร้าง mapping code -> name เฉพาะที่มีอยู่จริงใน items (ตามประเภทที่เลือก)"""
+    rows = [r for r in items if r.get("faculty") and (not sel_type or r.get("course_type") == sel_type)]
+    m = {}
+    for r in rows:
+        code = r.get("faculty")
+        name = r.get("faculty_name") or code
+        # ถ้าชื่อไม่ตรง ให้รักษาชื่อแรกไว้เพื่อความนิ่ง
+        if code not in m:
+            m[code] = name
+    return m
+
+def admin_course_options(items: List[Dict], sel_type: Optional[str], sel_fac: Optional[str]) -> List[str]:
+    """คืนค่าเป็น ["ทั้งหมด", "CODE NAME", ...] ตามตัวกรองประเภท/คณะ"""
+    rows = [r for r in items if r.get("course_code")]
+    if sel_type:
+        rows = [r for r in rows if r.get("course_type") == sel_type]
+    if sel_fac:
+        rows = [r for r in rows if r.get("faculty") == sel_fac]
+    names = sorted({f"{r['course_code']} {r.get('course_name','')}".strip() for r in rows})
+    return ["ทั้งหมด"] + names
+
+def admin_apply_filters(items: List[Dict],
+                        sel_type: Optional[str],
+                        sel_fac: Optional[str],
+                        course_label: str,
+                        q: str,
+                        min_rating: int) -> List[Dict]:
+    out = list(items)
+    if sel_type:
+        out = [r for r in out if r.get("course_type") == sel_type]
+    if sel_fac:
+        out = [r for r in out if r.get("faculty") == sel_fac]
+    if course_label and course_label != "ทั้งหมด":
+        code = course_label.split(" ")[0]
+        out = [r for r in out if str(r.get("course_code", "")) == code]
+    if q:
+        ql = q.lower().strip()
+        out = [r for r in out if ql in (r.get("text") or "").lower()
+               or ql in (r.get("course_name") or "").lower()]
+    if min_rating and min_rating > 1:
+        out = [r for r in out if int(r.get("rating", 0)) >= min_rating]
+    return out
+
+def admin_sort_items(items: List[Dict], sort_key: str) -> List[Dict]:
+    if sort_key == "วันที่ (ใหม่→เก่า)": return sorted(items, key=lambda x: x.get("created_at", ""), reverse=True)
+    if sort_key == "วันที่ (เก่า→ใหม่)": return sorted(items, key=lambda x: x.get("created_at", ""))
+    if sort_key == "คะแนน (สูง→ต่ำ)": return sorted(items, key=lambda x: int(x.get("rating", 0)), reverse=True)
+    if sort_key == "คะแนน (ต่ำ→สูง)": return sorted(items, key=lambda x: int(x.get("rating", 0)))
+    return items
+
+def bulk_bar(filtered_ids: List[str], data: Dict):
+    pending = data["pending_reviews"]
+    selected_ids = st.session_state.get("selected_ids", set())
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
+    with c1:
+        if st.button("เลือกทั้งหมด(ตามตัวกรอง)"): st.session_state["selected_ids"] = set(filtered_ids); st.rerun()
+    with c2:
+        if st.button("ล้างการเลือก"): st.session_state["selected_ids"] = set(); st.rerun()
+    with c3:
+        if st.button("✅ อนุมัติที่เลือก") and selected_ids:
+            move, keep = [], []
+            ids = set(selected_ids)
+            for r in pending: (move if r["id"] in ids else keep).append(r)
+            for r in move: r["status"] = "approved"
+            data["approved_reviews"].extend(move)
+            data["pending_reviews"] = keep
+            save_data(data)
+            st.success(f"อนุมัติ {len(move)} รายการ")
+            st.session_state["selected_ids"] = set()
+            st.rerun()
+    with c4:
+        if st.button("🗑️ ปฏิเสธที่เลือก") and selected_ids:
+            keep = [r for r in pending if r["id"] not in selected_ids]
+            removed = len(pending) - len(keep)
+            data["pending_reviews"] = keep
+            save_data(data)
+            st.warning(f"ปฏิเสธ {removed} รายการ")
+            st.session_state["selected_ids"] = set()
+            st.rerun()
+
+def render_grouped(items: List[Dict], data: Optional[Dict] = None, pending_mode: bool = False):
+    """จัดกลุ่มเป็น ประเภท → คณะ → รายวิชา"""
+    if not items:
+        st.info("ไม่พบรายการตามตัวกรอง"); return
+    selected_ids = st.session_state.setdefault("selected_ids", set())
+    groups: Dict[str, Dict[str, Dict[str, List[Dict]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    for r in items:
+        ctype = COURSE_TYPES.get(r.get("course_type",""), r.get("course_type","?"))
+        fac = f"{r.get('faculty','?')} - {r.get('faculty_name','?')}"
+        course_key = f"{r.get('course_code','')} {r.get('course_name','')}".strip()
+        groups[ctype][fac][course_key].append(r)
+
+    for ctype in sorted(groups.keys()):
+        with st.expander(f"ประเภท: {ctype}", expanded=True):
+            for fac in sorted(groups[ctype].keys()):
+                st.markdown(f"### คณะ: {fac}")
+                for course_key in sorted(groups[ctype][fac].keys()):
+                    st.markdown(f"**รายวิชา: {course_key}**")
+                    for r in groups[ctype][fac][course_key]:
+                        with st.container(border=True):
+                            left, right = st.columns([3, 1])
+                            with left:
+                                st.markdown(
+                                    f"**{r.get('course_code','')} {r.get('course_name','')}**  \n"
+                                    f"ให้คะแนน: {star_str(int(r.get('rating', 0)))}  \n"
+                                    f"โดย `{r.get('author', '?')}` • วันที่ {r.get('created_at', '')}"
+                                )
+                                if txt := r.get("text"):
+                                    st.markdown("—"); st.write(txt)
+                            with right:
+                                if pending_mode and data is not None:
+                                    checked = r["id"] in selected_ids
+                                    ck = st.checkbox("เลือก", key=f"sel_{r['id']}", value=checked)
+                                    if ck and r["id"] not in selected_ids: selected_ids.add(r["id"])
+                                    if not ck and r["id"] in selected_ids: selected_ids.remove(r["id"])
+                                    a1, a2 = st.columns(2)
+                                    with a1:
+                                        if st.button("อนุมัติ", key=f"ap_{r['id']}"):
+                                            r["status"] = "approved"
+                                            data["approved_reviews"].append(r)
+                                            data["pending_reviews"].remove(r)
+                                            save_data(data)
+                                            st.success("อนุมัติแล้ว"); st.rerun()
+                                    with a2:
+                                        if st.button("ปฏิเสธ", key=f"re_{r['id']}"):
+                                            data["pending_reviews"].remove(r)
+                                            save_data(data)
+                                            st.warning("ปฏิเสธแล้ว"); st.rerun()
+
+
 
 def admin_faculty_options(items: List[Dict]) -> List[str]:
     names = sorted({r.get("faculty_name", r.get("faculty", "")) for r in items if r.get("faculty")})
@@ -1231,59 +1527,83 @@ def render_grouped(items: List[Dict], data: Optional[Dict] = None, pending_mode:
 # Summary table (Admin)
 # -----------------------------
 
-def build_summary_rows(approved: List[Dict]) -> List[Dict]:
-    agg: Dict[Tuple[str, str, int, str], Dict[str, float]] = {}
-    # key: (faculty_name, department_name, year, course_name)
-    for r in approved:
-        if r.get("status") != "approved": continue
-        key = (r.get("faculty_name", "-"), r.get("department_name", "-"), int(r.get("year", 0)),
-               r.get("course_name", "-"))
-        obj = agg.setdefault(key, {"sum": 0.0, "count": 0.0});
-        obj["sum"] += float(r.get("rating", 0));
-        obj["count"] += 1
-    rows: List[Dict] = []
-    for (fac, dep, yr, cname), v in agg.items():
-        avg = v["sum"] / v["count"] if v["count"] else 0.0
-        rows.append({"คณะ": fac, "สาขา": dep, "ชั้นปี": yr, "รายวิชา": cname, "ค่าเฉลี่ย": round(avg, 2),
-                     "ดาว": star_str(int(round(avg))), "จำนวนรีวิว": int(v["count"]), "เฉลี่ย/5": avg / 5.0})
-    rows.sort(key=lambda r: (r["คณะ"], r["สาขา"], r["ชั้นปี"], r["รายวิชา"]))
-    return rows
+# -----------------------------
+# Summary table (Admin)  [REPLACED]
+# -----------------------------
+import pandas as pd
 
+def build_summary_rows(approved: List[Dict]) -> List[Dict]:
+    """สรุปเป็นต่อรายวิชา: (ประเภท, คณะ, รหัส/ชื่อรายวิชา) → avg, count"""
+    agg: Dict[Tuple[str, str, str, str, str], Dict[str, float]] = {}
+    # key: (course_type, faculty_code, faculty_name, course_code, course_name)
+    for r in approved:
+        if r.get("status") != "approved":
+            continue
+        key = (
+            r.get("course_type",""),
+            r.get("faculty","-"),
+            r.get("faculty_name","-"),
+            r.get("course_code",""),
+            r.get("course_name","-"),
+        )
+        obj = agg.setdefault(key, {"sum": 0.0, "count": 0.0})
+        obj["sum"] += float(r.get("rating", 0))
+        obj["count"] += 1
+
+    rows: List[Dict] = []
+    for (ctype, fac_code, fac_name, ccode, cname), v in agg.items():
+        avg = v["sum"] / v["count"] if v["count"] else 0.0
+        rows.append({
+            "ประเภท": COURSE_TYPES.get(ctype, ctype),
+            "คณะ": f"{fac_code} - {fac_name}",
+            "รหัสวิชา": ccode,
+            "รายวิชา": cname,
+            "ค่าเฉลี่ย": round(avg, 2),
+            "ดาว": star_str(int(round(avg))),
+            "จำนวนรีวิว": int(v["count"]),
+            "เฉลี่ย/5": avg / 5.0,
+        })
+    rows.sort(key=lambda r: (r["ประเภท"], r["คณะ"], r["รหัสวิชา"]))
+    return rows
 
 def summary_table_panel(data: Dict):
     st.subheader("📊 สรุปภาพรวม (ตาราง)")
     approved = [r for r in data.get("approved_reviews", []) if r.get("status") == "approved"]
-    rows = build_summary_rows(approved)
+    all_rows = build_summary_rows(approved)
+
+    if not all_rows:
+        st.info("ยังไม่มีข้อมูลสรุป"); return
+
     # Filters
     c1, c2, c3 = st.columns(3)
     with c1:
-        facs = ["ทั้งหมด"] + sorted({r["คณะ"] for r in rows});
-        f = st.selectbox("คณะ", facs, index=0, key="sum_fac")
+        types = ["ทั้งหมด"] + sorted({r["ประเภท"] for r in all_rows})
+        ftype = st.selectbox("ประเภท", types, index=0, key="sum_type")
     with c2:
-        deps = ["ทั้งหมด"] + sorted({r["สาขา"] for r in rows if f == "ทั้งหมด" or r["คณะ"] == f});
-        d = st.selectbox("สาขา", deps, index=0, key="sum_dep")
+        facs = ["ทั้งหมด"] + sorted({r["คณะ"] for r in all_rows if ftype == "ทั้งหมด" or r["ประเภท"] == ftype})
+        ffac = st.selectbox("คณะ", facs, index=0, key="sum_fac2")
     with c3:
-        yrs = ["ทั้งหมด", "1", "2", "3", "4"];
-        y = st.selectbox("ชั้นปี", yrs, index=0, key="sum_year")
-    if f != "ทั้งหมด": rows = [r for r in rows if r["คณะ"] == f]
-    if d != "ทั้งหมด": rows = [r for r in rows if r["สาขา"] == d]
-    if y != "ทั้งหมด": rows = [r for r in rows if str(r["ชั้นปี"]) == y]
+        courses = ["ทั้งหมด"] + sorted({r["รหัสวิชา"] for r in all_rows
+                                        if (ftype == "ทั้งหมด" or r["ประเภท"] == ftype) and
+                                           (ffac == "ทั้งหมด" or r["คณะ"] == ffac)})
+        fc = st.selectbox("รายวิชา", courses, index=0, key="sum_course2")
 
-    if not rows:
-        st.info("ยังไม่มีข้อมูลสรุปสำหรับเงื่อนไขนี้");
-        return
+    rows = [r for r in all_rows
+            if (ftype == "ทั้งหมด" or r["ประเภท"] == ftype)
+            and (ffac == "ทั้งหมด" or r["คณะ"] == ffac)
+            and (fc == "ทั้งหมด" or r["รหัสวิชา"] == fc)]
 
     st.dataframe(
-        rows,
+        pd.DataFrame(rows),
         hide_index=True,
         use_container_width=True,
         column_config={
-            "ชั้นปี": st.column_config.NumberColumn(format="%d"),
             "ค่าเฉลี่ย": st.column_config.NumberColumn(format="%.2f"),
             "จำนวนรีวิว": st.column_config.NumberColumn(format="%d"),
             "เฉลี่ย/5": st.column_config.ProgressColumn("เฉลี่ย/5", min_value=0.0, max_value=1.0),
         },
     )
+
 
 
 # -----------------------------
@@ -1299,19 +1619,35 @@ def page_admin(data: Dict):
 
     with t_pend:
         st.subheader("กรองคิวรีวิว")
-        col1, col2, col3, col4 = st.columns(4)
-        p_fac = st.selectbox("คณะ", admin_faculty_options(pending), index=0, key="adm_p_fac")
-        p_dep = st.selectbox("สาขา", admin_department_options(pending, p_fac), index=0, key="adm_p_dep")
-        p_year = st.selectbox("ชั้นปี", admin_year_options(), index=0, key="adm_p_year")
-        p_minr = st.slider("คะแนนขั้นต่ำ", 1, 5, 1, step=1, key="adm_p_minr")
-        col5, col6 = st.columns([2, 2])
-        p_course = st.selectbox("รายวิชา", admin_course_options(pending, p_fac, p_dep, p_year), index=0,
-                                key="adm_p_course")
-        p_q = st.text_input("ค้นหาในข้อความรีวิว", key="adm_p_q")
+        # ตัวกรอง: ประเภท → คณะ → รายวิชา
+        col1, col2, col3, col4 = st.columns([1,1,1,1.2])
+
+        with col1:
+            t_opts = admin_type_options(pending)
+            p_type = st.selectbox("ประเภท", t_opts, index=0, key="adm_p_type",
+                                  format_func=lambda v: "ทั้งหมด" if v=="ทั้งหมด" else COURSE_TYPES.get(v, v))
+            sel_type = None if p_type == "ทั้งหมด" else p_type
+
+        with col2:
+            fac_map = admin_faculty_map(pending, sel_type)
+            f_opts = ["ทั้งหมด"] + list(sorted(fac_map.keys()))
+            p_fac = st.selectbox("คณะ", f_opts, index=0, key="adm_p_fac2",
+                                 format_func=lambda code: "ทั้งหมด" if code=="ทั้งหมด" else f"{code} - {fac_map.get(code, code)}")
+            sel_fac = None if p_fac == "ทั้งหมด" else p_fac
+
+        with col3:
+            c_opts = admin_course_options(pending, sel_type, sel_fac)
+            p_course = st.selectbox("รายวิชา", c_opts, index=0, key="adm_p_course2")
+
+        with col4:
+            p_q = st.text_input("ค้นหาในข้อความรีวิว/ชื่อวิชา", key="adm_p_q2")
+
+        p_minr = st.slider("คะแนนขั้นต่ำ", 1, 5, 1, step=1, key="adm_p_minr2")
         sort1 = st.selectbox("จัดเรียงโดย",
                              ["วันที่ (ใหม่→เก่า)", "วันที่ (เก่า→ใหม่)", "คะแนน (สูง→ต่ำ)", "คะแนน (ต่ำ→สูง)"],
-                             index=0, key="adm_p_sort")
-        pf = admin_apply_filters(pending, p_fac, p_dep, p_year, p_course, p_q, p_minr)
+                             index=0, key="adm_p_sort2")
+
+        pf = admin_apply_filters(pending, sel_type, sel_fac, p_course, p_q, p_minr)
         pf = admin_sort_items(pf, sort1)
         ids = [r["id"] for r in pf]
         bulk_bar(ids, data)
@@ -1319,18 +1655,34 @@ def page_admin(data: Dict):
 
     with t_appr:
         st.subheader("กรองรีวิวที่อนุมัติแล้ว")
-        a_fac = st.selectbox("คณะ", admin_faculty_options(approved), index=0, key="a_fac")
-        a_dep = st.selectbox("สาขา", admin_department_options(approved, a_fac), index=0, key="a_dep")
-        a_year = st.selectbox("ชั้นปี", admin_year_options(), index=0, key="a_year")
-        a_minr = st.slider("คะแนนขั้นต่ำ", 1, 5, 1, step=1, key="a_minr")
-        col7, col8 = st.columns([2, 2])
-        a_course = st.selectbox("รายวิชา", admin_course_options(approved, a_fac, a_dep, a_year), index=0,
-                                key="a_course")
-        a_q = st.text_input("ค้นหาในข้อความรีวิว", key="a_q")
+        col1, col2, col3, col4 = st.columns([1,1,1,1.2])
+
+        with col1:
+            t_opts = admin_type_options(approved)
+            a_type = st.selectbox("ประเภท", t_opts, index=0, key="adm_a_type",
+                                  format_func=lambda v: "ทั้งหมด" if v=="ทั้งหมด" else COURSE_TYPES.get(v, v))
+            sel_type2 = None if a_type == "ทั้งหมด" else a_type
+
+        with col2:
+            fac_map2 = admin_faculty_map(approved, sel_type2)
+            f_opts2 = ["ทั้งหมด"] + list(sorted(fac_map2.keys()))
+            a_fac = st.selectbox("คณะ", f_opts2, index=0, key="adm_a_fac2",
+                                 format_func=lambda code: "ทั้งหมด" if code=="ทั้งหมด" else f"{code} - {fac_map2.get(code, code)}")
+            sel_fac2 = None if a_fac == "ทั้งหมด" else a_fac
+
+        with col3:
+            c_opts2 = admin_course_options(approved, sel_type2, sel_fac2)
+            a_course = st.selectbox("รายวิชา", c_opts2, index=0, key="adm_a_course2")
+
+        with col4:
+            a_q = st.text_input("ค้นหาในข้อความรีวิว/ชื่อวิชา", key="adm_a_q2")
+
+        a_minr = st.slider("คะแนนขั้นต่ำ", 1, 5, 1, step=1, key="adm_a_minr2")
         sort2 = st.selectbox("จัดเรียงโดย",
                              ["วันที่ (ใหม่→เก่า)", "วันที่ (เก่า→ใหม่)", "คะแนน (สูง→ต่ำ)", "คะแนน (ต่ำ→สูง)"],
-                             index=0, key="a_sort")
-        af = admin_apply_filters(approved, a_fac, a_dep, a_year, a_course, a_q, a_minr)
+                             index=0, key="adm_a_sort2")
+
+        af = admin_apply_filters(approved, sel_type2, sel_fac2, a_course, a_q, a_minr)
         af = admin_sort_items(af, sort2)
         render_grouped(af, pending_mode=False)
 
@@ -1351,16 +1703,23 @@ def page_admin(data: Dict):
                 buf = StringIO()
                 writer = csv.DictWriter(
                     buf,
-                    fieldnames=["id", "faculty", "faculty_name", "department", "department_name", "year", "course_code",
-                                "course_name", "rating", "text", "author", "created_at", "status"],
-                );
+                    fieldnames=[
+                        "id", "course_type",
+                        "faculty", "faculty_name",
+                        "department", "department_name", "year",   # ยัง export ไว้เผื่อข้อมูลเก่า
+                        "course_code", "course_name",
+                        "rating", "text", "author", "created_at", "status",
+                    ],
+                )
                 writer.writeheader()
-                for r in rows: writer.writerow({k: r.get(k, "") for k in writer.fieldnames})
+                for r in rows:
+                    writer.writerow({k: r.get(k, "") for k in writer.fieldnames})
                 st.download_button("Download approved_reviews.csv", buf.getvalue(), "approved_reviews.csv", "text/csv")
     with coly:
         if st.button("⬇️ ดาวน์โหลดฐานข้อมูลทั้งหมด (JSON)"):
             payload = json.dumps(data, ensure_ascii=False, indent=2)
             st.download_button("Download data.json", payload, "data.json", "application/json")
+
 
 
 # -----------------------------
@@ -1376,9 +1735,6 @@ def header_bar():
     st.divider()
 
 # ===== Email helper (วางไว้ส่วน Utilities ก่อน do_login_form) =====
-import smtplib, ssl
-from email.message import EmailMessage
-
 import smtplib, ssl
 from email.message import EmailMessage
 
