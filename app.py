@@ -513,6 +513,27 @@ class GoogleSheetsStorage:
 BACKEND = st.secrets.get("STORAGE_BACKEND", "local").lower()
 
 
+@lru_cache(maxsize=512)
+def _email_to_display(email: str) -> str:
+    u = find_user_by_email(email)   # ฟังก์ชันนี้คุณมีอยู่แล้ว
+    return (u.get("display") if u and u.get("display") else email)
+
+def review_author(row: Dict) -> str:
+    # ถ้ารีวิวใหม่ๆ เก็บชื่อไว้แล้ว
+    if row.get("author_display"):
+        return row["author_display"]
+
+    # ปกติ author เดิมเป็นอีเมล → แปลงเป็นชื่อถ้าหาได้
+    name = (row.get("author") or "").strip()
+    if "@" in name:
+        return _email_to_display(name)
+
+    # เผื่อมี field author_email
+    if row.get("author_email"):
+        return _email_to_display(row["author_email"])
+
+    return name or "ผู้ใช้"
+
 @st.cache_resource
 def get_storage():
     # instantiate lazily to allow class overrides above to take effect
@@ -1457,7 +1478,7 @@ def page_student(data: Dict):
                     # คะแนน + ผู้รีวิว + วันที่
                     st.markdown(
                         f"ให้คะแนน: <span class='star'>{star_str(int(r.get('rating', 0)))}</span>  "
-                        f"<span class='muted'>โดย `{r.get('author', '?')}` • วันที่ {r.get('created_at', '')}</span>",
+                        f"<span class='muted'>โดย `{review_author(r)}` • วันที่ {r.get('created_at', '')}</span>",
                         unsafe_allow_html=True,
                     )
 
@@ -1583,13 +1604,16 @@ def render_grouped(items: List[Dict], data: Optional[Dict] = None, pending_mode:
                         with st.container(border=True):
                             left, right = st.columns([3, 1])
                             with left:
+                                author = review_author(r)
                                 st.markdown(
-                                    f"**{r.get('course_code','')} {r.get('course_name','')}**  \n"
+                                    f"**{r.get('course_code', '')} {r.get('course_name', '')}**  \n"
                                     f"ให้คะแนน: {star_str(int(r.get('rating', 0)))}  \n"
-                                    f"โดย `{r.get('author', '?')}` • วันที่ {r.get('created_at', '')}"
+                                    f"โดย `{author}` • วันที่ {r.get('created_at', '')}"
                                 )
                                 if txt := r.get("text"):
-                                    st.markdown("—"); st.write(txt)
+                                    st.markdown("—")
+                                    st.write(txt)
+
                             with right:
                                 if pending_mode and data is not None:
                                     checked = r["id"] in selected_ids
