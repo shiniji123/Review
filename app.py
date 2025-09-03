@@ -1367,7 +1367,7 @@ def page_student(data: Dict):
 
     # Browse tab (เหมือนหน้า Admin - Approved)
     with t_browse:
-        st.subheader("ดูรีวิวที่อนุมัติแล้ว (มุมมองเดียวกับ Admin)")
+        st.subheader("ดูรีวิวที่อนุมัติแล้ว")
 
         approved_only = [r for r in approved if r.get("status") == "approved"]
 
