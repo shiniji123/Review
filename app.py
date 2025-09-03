@@ -1874,7 +1874,7 @@ def page_admin(data: Dict):
 # สร้าง lookup จาก catalog: code → {credit, grading, updated_at}
 def build_course_lookup():
     lut = {}
-    for ctype, facs in COURSE_CATALOG.items():
+    for ctype, facs in COURSE_CATALOG_BY_TYPE.items():
         for fac, items in facs.items():
             for c in items:
                 lut[c["code"]] = {
