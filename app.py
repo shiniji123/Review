@@ -104,14 +104,12 @@ COURSE_CATALOG_BY_TYPE = {
             {
                 "code": "SIHE301",
                 "name": "จิตวิทยาสังคมสำหรับบุคลากรในระบบสุขภาพ",
-                "desc_th": "หลักจิตวิทยาสังคมที่ประยุกต์ในงานสุขภาพ ทีมสหสาขา และผู้รับบริการ",
-                "desc_en": "Social psychology for healthcare personnel: teams and patient interactions.",
+                "desc_th": "ภาษาและการสื่อสาร การรับรู้ทางสังคม การชักจูง อคติ คุณค่า อิทธิพลทางสังคม ตัวตนในสังคม และอัตลักษณ์ทางสังคม ความสัมพันธ์ระหว่างบุคคล พฤติกรรมกลุ่ม จิตวิทยาสังคมกับระบบสุขภาพ",
+                "desc_en": "Language and communication, social perception, persuasion, prejudice, values, social influence, social self and social identities, personal relationship, behavior in groups, social psychology and healthcare",
                 "credit": "2(2-0-4)",  # ← หน่วยกิต (แนะนำให้เก็บเป็นสตริงตาม format ที่มหาลัยใช้)
                 "grading": "OSU",  # ← วิธีตัดเกรด: ABC หรือ OSU
-                "updated_at": "2025-09-03"  # ← วันที่อัปเดตล่าสุด (รูปแบบ YYYY-MM-DD)
+                "updated_at": "7/9/2025"  # ← วันที่อัปเดตล่าสุด (รูปแบบ YYYY-MM-DD)
             },
-            # ตัวอย่างเพิ่ม:
-            # {"code": "GE-SI101", "name": "การแพทย์พื้นฐานสำหรับประชาชน", "credit": 3},
         ],
         "PY": [  # คณะเภสัชศาสตร์
             # ตัวอย่าง:
@@ -1410,13 +1408,9 @@ def page_student(data: Dict):
                         st.write(r["text"])
 
 # -----------------------------
-# Admin helpers (filters + grouping)
-# -----------------------------
 # -----------------------------
 # Admin helpers (filters + grouping)  [REPLACED]
 # -----------------------------
-from typing import List, Dict, Optional, Tuple
-from collections import defaultdict
 
 def admin_type_options(items: List[Dict]) -> List[str]:
     """คืนค่าเป็น list ของคีย์ประเภทที่มีอยู่จริงใน items เช่น ['GE','FE','ME']"""
@@ -1430,13 +1424,12 @@ def admin_faculty_map(items: List[Dict], sel_type: Optional[str] = None) -> Dict
     for r in rows:
         code = r.get("faculty")
         name = r.get("faculty_name") or code
-        # ถ้าชื่อไม่ตรง ให้รักษาชื่อแรกไว้เพื่อความนิ่ง
         if code not in m:
             m[code] = name
     return m
 
 def admin_course_options(items: List[Dict], sel_type: Optional[str], sel_fac: Optional[str]) -> List[str]:
-    """คืนค่าเป็น ["ทั้งหมด", "CODE NAME", ...] ตามตัวกรองประเภท/คณะ"""
+    """คืนค่าเป็น ['ทั้งหมด', 'CODE NAME', ...] ตามตัวกรองประเภท/คณะ"""
     rows = [r for r in items if r.get("course_code")]
     if sel_type:
         rows = [r for r in rows if r.get("course_type") == sel_type]
@@ -1479,9 +1472,13 @@ def bulk_bar(filtered_ids: List[str], data: Dict):
     selected_ids = st.session_state.get("selected_ids", set())
     c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
     with c1:
-        if st.button("เลือกทั้งหมด(ตามตัวกรอง)"): st.session_state["selected_ids"] = set(filtered_ids); st.rerun()
+        if st.button("เลือกทั้งหมด(ตามตัวกรอง)"):
+            st.session_state["selected_ids"] = set(filtered_ids)
+            st.rerun()
     with c2:
-        if st.button("ล้างการเลือก"): st.session_state["selected_ids"] = set(); st.rerun()
+        if st.button("ล้างการเลือก"):
+            st.session_state["selected_ids"] = set()
+            st.rerun()
     with c3:
         if st.button("✅ อนุมัติที่เลือก") and selected_ids:
             move, keep = [], []
@@ -1507,7 +1504,8 @@ def bulk_bar(filtered_ids: List[str], data: Dict):
 def render_grouped(items: List[Dict], data: Optional[Dict] = None, pending_mode: bool = False):
     """จัดกลุ่มเป็น ประเภท → คณะ → รายวิชา"""
     if not items:
-        st.info("ไม่พบรายการตามตัวกรอง"); return
+        st.info("ไม่พบรายการตามตัวกรอง")
+        return
     selected_ids = st.session_state.setdefault("selected_ids", set())
     groups: Dict[str, Dict[str, Dict[str, List[Dict]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for r in items:
@@ -1554,147 +1552,9 @@ def render_grouped(items: List[Dict], data: Optional[Dict] = None, pending_mode:
                                             st.warning("ปฏิเสธแล้ว"); st.rerun()
 
 
-
-def admin_faculty_options(items: List[Dict]) -> List[str]:
-    names = sorted({r.get("faculty_name", r.get("faculty", "")) for r in items if r.get("faculty")})
-    return ["ทั้งหมด"] + names
-
-
-def admin_department_options(items: List[Dict], fac_name: str) -> List[str]:
-    if fac_name == "ทั้งหมด":
-        names = sorted({r.get("department_name", r.get("department", "")) for r in items if r.get("department")})
-    else:
-        names = sorted(
-            {r.get("department_name", r.get("department", "")) for r in items if r.get("faculty_name") == fac_name})
-    return ["ทั้งหมด"] + names
-
-
-def admin_year_options() -> List[str]:
-    return ["ทั้งหมด", "1", "2", "3", "4"]
-
-
-def admin_course_options(items: List[Dict], fac: str, dept: str, year: str) -> List[str]:
-    filtered = list(items)
-    if fac != "ทั้งหมด": filtered = [r for r in filtered if r.get("faculty_name") == fac]
-    if dept != "ทั้งหมด": filtered = [r for r in filtered if r.get("department_name") == dept]
-    if year != "ทั้งหมด": filtered = [r for r in filtered if str(r.get("year", "")) == year]
-    names = sorted({f"{r.get('course_code', '')} {r.get('course_name', '')}" for r in filtered if r.get("course_code")})
-    return ["ทั้งหมด"] + names
-
-
-def admin_apply_filters(items: List[Dict], fac: str, dept: str, year: str, course_label: str, q: str,
-                        min_rating: int) -> List[Dict]:
-    out = list(items)
-    if fac != "ทั้งหมด": out = [r for r in out if r.get("faculty_name") == fac]
-    if dept != "ทั้งหมด": out = [r for r in out if r.get("department_name") == dept]
-    if year != "ทั้งหมด": out = [r for r in out if str(r.get("year", "")) == year]
-    if course_label and course_label != "ทั้งหมด":
-        code = course_label.split(" ")[0]
-        out = [r for r in out if str(r.get("course_code", "")) == code]
-    if q:
-        ql = q.lower().strip();
-        out = [r for r in out if ql in (r.get("text") or "").lower()]
-    if min_rating and min_rating > 1:
-        out = [r for r in out if int(r.get("rating", 0)) >= min_rating]
-    return out
-
-
-def admin_sort_items(items: List[Dict], sort_key: str) -> List[Dict]:
-    if sort_key == "วันที่ (ใหม่→เก่า)": return sorted(items, key=lambda x: x.get("created_at", ""), reverse=True)
-    if sort_key == "วันที่ (เก่า→ใหม่)": return sorted(items, key=lambda x: x.get("created_at", ""))
-    if sort_key == "คะแนน (สูง→ต่ำ)": return sorted(items, key=lambda x: int(x.get("rating", 0)), reverse=True)
-    if sort_key == "คะแนน (ต่ำ→สูง)": return sorted(items, key=lambda x: int(x.get("rating", 0)))
-    return items
-
-
-def bulk_bar(filtered_ids: List[str], data: Dict):
-    pending = data["pending_reviews"]
-    selected_ids = st.session_state.get("selected_ids", set())
-    c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
-    with c1:
-        if st.button("เลือกทั้งหมด(ตามตัวกรอง)"): st.session_state["selected_ids"] = set(filtered_ids); st.rerun()
-    with c2:
-        if st.button("ล้างการเลือก"): st.session_state["selected_ids"] = set(); st.rerun()
-    with c3:
-        if st.button("✅ อนุมัติที่เลือก") and selected_ids:
-            move, keep = [], []
-            ids = set(selected_ids)
-            for r in pending: (move if r["id"] in ids else keep).append(r)
-            for r in move: r["status"] = "approved"
-            data["approved_reviews"].extend(move);
-            data["pending_reviews"] = keep;
-            save_data(data)
-            st.success(f"อนุมัติ {len(move)} รายการ");
-            st.session_state["selected_ids"] = set();
-            st.rerun()
-    with c4:
-        if st.button("🗑️ ปฏิเสธที่เลือก") and selected_ids:
-            keep = [r for r in pending if r["id"] not in selected_ids];
-            removed = len(pending) - len(keep)
-            data["pending_reviews"] = keep;
-            save_data(data)
-            st.warning(f"ปฏิเสธ {removed} รายการ");
-            st.session_state["selected_ids"] = set();
-            st.rerun()
-
-
-def render_grouped(items: List[Dict], data: Optional[Dict] = None, pending_mode: bool = False):
-    if not items: st.info("ไม่พบรายการตามตัวกรอง"); return
-    selected_ids = st.session_state.setdefault("selected_ids", set())
-    groups: Dict[str, Dict[str, Dict[str, List[Dict]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    for r in items:
-        fac = r.get("faculty_name", r.get("faculty", "?"));
-        dep = r.get("department_name", r.get("department", "?"));
-        yr = str(r.get("year", "?"))
-        groups[fac][dep][yr].append(r)
-    for fac in sorted(groups.keys()):
-        with st.expander(f"คณะ: {fac}", expanded=True):
-            for dep in sorted(groups[fac].keys()):
-                st.markdown(f"### สาขา: {dep}")
-                for yr in sorted(groups[fac][dep].keys(), key=lambda v: (len(v), v)):
-                    st.markdown(f"**ชั้นปีที่ {yr}**")
-                    for r in groups[fac][dep][yr]:
-                        with st.container(border=True):
-                            left, right = st.columns([3, 1])
-                            with left:
-                                st.markdown(
-                                    f"**{r.get('course_code', '')} {r.get('course_name', '')}**  \n"
-                                    f"ให้คะแนน: {star_str(int(r.get('rating', 0)))}  \n"
-                                    f"โดย `{r.get('author', '?')}` • วันที่ {r.get('created_at', '')}"
-                                )
-                                if txt := r.get("text"): st.markdown("—"); st.write(txt)
-                            with right:
-                                if pending_mode and data is not None:
-                                    checked = r["id"] in selected_ids
-                                    ck = st.checkbox("เลือก", key=f"sel_{r['id']}", value=checked)
-                                    if ck and r["id"] not in selected_ids: selected_ids.add(r["id"])
-                                    if not ck and r["id"] in selected_ids: selected_ids.remove(r["id"])
-                                    a1, a2 = st.columns(2)
-                                    with a1:
-                                        if st.button("อนุมัติ", key=f"ap_{r['id']}"):
-                                            r["status"] = "approved";
-                                            data["approved_reviews"].append(r);
-                                            data["pending_reviews"].remove(r);
-                                            save_data(data);
-                                            st.success("อนุมัติแล้ว");
-                                            st.rerun()
-                                    with a2:
-                                        if st.button("ปฏิเสธ", key=f"re_{r['id']}"):
-                                            data["pending_reviews"].remove(r);
-                                            save_data(data);
-                                            st.warning("ปฏิเสธแล้ว");
-                                            st.rerun()
-
-
-# -----------------------------
-# Summary table (Admin)
-# -----------------------------
-
 # -----------------------------
 # Summary table (Admin)  [REPLACED]
 # -----------------------------
-import pandas as pd
-
 def build_summary_rows(approved: List[Dict]) -> List[Dict]:
     """สรุปเป็นต่อรายวิชา: (ประเภท, คณะ, รหัส/ชื่อรายวิชา) → avg, count"""
     agg: Dict[Tuple[str, str, str, str, str], Dict[str, float]] = {}
