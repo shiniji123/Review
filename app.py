@@ -44,7 +44,6 @@ st.markdown("""
 
 /* บังคับทั้งแอป (ตัวอักษรไทย/อังกฤษในคอมโพเนนต์เกือบทั้งหมด) */
 html, body,
-{ font-size: 16.5px; },
 [data-testid="stAppViewContainer"],
 [data-testid="stHeader"],
 [data-testid="stSidebar"],
