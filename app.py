@@ -95,7 +95,7 @@ FACULTIES_BY_TYPE = {
 # ฟอร์แมตของ 1 รายวิชา:
 # {"code": "รหัสวิชา", "name": "ชื่อวิชา", "desc_th": "...", "desc_en": "...", "credit": 3, "prereq": "..."}
 
-COURSE_CATALOG = {
+COURSE_CATALOG_BY_TYPE = {
     # -----------------------
     # 1) GE: รายวิชาศึกษาทั่วไป
     # -----------------------
