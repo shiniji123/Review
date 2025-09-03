@@ -167,7 +167,14 @@ COURSE_CATALOG_BY_TYPE = {
     # -----------------------
     "ME": {
         "SC": [
-            {"code": "ME-SCMA301", "name": "ทฤษฎีจำนวนเบื้องต้น (Mathematics Elective)", "credit": 3},
+            {
+                "code": "SCMA 349",
+                "name": "Software Engineering ",
+                "desc_th": "วิศวกรรมซอฟต์แวร์ขั้นแนะนํา ระบบสังคมเทคนิค ระบบวิกฤต กระบวนการซอฟต์แวร์ การจัดการโครงงาน ความต้องการซอฟต์แวร์การทวนสอบและการตรวจสอบ การทดสอบซอฟต์แวร",
+                "desc_en": "Introduction to software engineering; socio-technical systems; critical systems; softwareprocesses; project management; software requirements; verification and validation;software testing",
+                "credit": "3(3-0-6)"
+
+            },
             {"code": "ME-SCMA302", "name": "คอมบินาทอริกส์เบื้องต้น", "credit": 3},
             {"code": "ME-SCMA303", "name": "สมการเชิงอนุพันธ์ขั้นสูง", "credit": 3, "prereq": "ME-SCMA3xx"},
             {"code": "ME-SCMA304", "name": "การวิเคราะห์เชิงตัวเลข", "credit": 3, "prereq": "Linear Algebra"},
