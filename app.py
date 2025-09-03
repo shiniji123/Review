@@ -31,34 +31,30 @@ st.markdown(
 )
 
 st.markdown("""
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
 <style>
-/* โหลดฟอนต์สำรอง (ถ้าเครื่องไม่มี Browallia New) */
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
-
-
-/* ตั้ง stack ฟอนต์ทั้งระบบ */
-:root {
-  --app-font: "Browallia New", "Sarabun",
-              system-ui, -apple-system, "Segoe UI", Roboto,
-              "Helvetica Neue", Arial, "Noto Sans Thai", "Noto Sans", sans-serif;
+/* ใช้ Browallia New กับตัวหนังสือหลักของแอป */
+.stApp, .stApp p, .stApp div, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
+.stApp li, .stApp label, .stApp input, .stApp button, .stApp textarea {
+  font-family: "Browallia New", "Noto Sans Thai", Tahoma, sans-serif !important;
 }
 
 html, body { font-size: 20px; }
 
-/* บังคับทั้งแอป (ตัวอักษรไทย/อังกฤษในคอมโพเนนต์เกือบทั้งหมด) */
-html, body,
-[data-testid="stAppViewContainer"],
-[data-testid="stHeader"],
-[data-testid="stSidebar"],
-[data-testid="stToolbar"],
-[class^="st-"], [class*=" st-"],
-[data-testid="stMarkdownContainer"] * ,
-[data-testid="stTable"] * {
-  font-family: var(--app-font) !important;
+/* เว้นไอคอนให้ยังใช้ฟอนต์ของ Material Icons */
+.material-icons, .material-icons-outlined,
+.material-symbols-outlined, .material-symbols-rounded {
+  font-family: 'Material Icons', 'Material Symbols Outlined', 'Material Symbols Rounded' !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  -webkit-font-feature-settings: 'liga' !important;
+  -webkit-font-smoothing: antialiased !important;
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 APP_TITLE = "เว็บไซต์รีวิวรายวิชามหาวิทยาลัยมหิดล MU Review Course"
 DATA_FILE = os.path.join("data", "data.json")
