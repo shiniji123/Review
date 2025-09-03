@@ -633,7 +633,7 @@ def do_login_form():
 
     st.markdown("### เข้าสู่ระบบ / ลงทะเบียน")
 
-    # อ่าน query params อย่างปลอดภัย
+    # อ่าน query params เพื่อดูว่าเป็น reset flow ไหม
     try:
         q = get_query_params()
     except Exception:
@@ -643,20 +643,35 @@ def do_login_form():
             q = {}
     reset_token = q.get("reset", [None])[0] if isinstance(q.get("reset"), list) else q.get("reset")
 
-    # >>> สร้างแท็บ 3 อันไว้ตรงนี้ แล้วใช้ในสโคปเดียวกัน <<<
-    tabs = st.tabs(["Login", "Sign up", "Forgot password"])
+    # กำหนดโหมดเริ่มต้น
+    default_mode = "Forgot password" if reset_token else "Login"
+    if "auth_mode" not in st.session_state:
+        st.session_state["auth_mode"] = default_mode
 
-    # ===== Login Tab =====
-    with tabs[0]:
-        email_or_admin = st.text_input(f"อีเมลนักศึกษา (@{ALLOWED_EMAIL_DOMAIN}) หรือ admin", key="auth_login_email")
+    # ใช้ radio (จำสถานะข้าม rerun ได้) แทน tabs
+    mode = st.radio(
+        "โหมด",
+        ["Login", "Sign up", "Forgot password"],
+        index=["Login", "Sign up", "Forgot password"].index(st.session_state["auth_mode"]),
+        horizontal=True,
+        key="auth_mode"
+    )
+
+    # =========================
+    # LOGIN
+    # =========================
+    if mode == "Login":
+        email_or_admin = st.text_input(f"อีเมลนักศึกษา (@{ALLOWED_EMAIL_DOMAIN}) หรือ admin",
+                                       key="auth_login_email")
         pw = st.text_input("รหัสผ่าน", type="password", key="auth_login_pw")
         if st.button("เข้าสู่ระบบ", type="primary", key="auth_login_btn"):
             if email_or_admin == "admin":
-                # login admin legacy
                 user = USERS.get("admin")
                 if user and user.get("password") == pw:
-                    st.session_state["auth"] = {"email": "admin", "username": "admin", "role": "admin",
-                                                "display": user.get("display", "Administrator")}
+                    st.session_state["auth"] = {
+                        "email": "admin", "username": "admin", "role": "admin",
+                        "display": user.get("display", "Administrator")
+                    }
                     st.success("เข้าสู่ระบบสำเร็จ (admin)")
                     st.rerun()
                 else:
@@ -681,21 +696,22 @@ def do_login_form():
                                 st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ชั่วคราวด้านล่าง")
                                 st.markdown(f"[คลิกเพื่อยืนยันบัญชี]({link})")
                                 st.code(link)
-
                     else:
                         if verify_password(pw, u.get("password_salt", ""), u.get("password_hash", "")):
-                            st.session_state["auth"] = {"email": u["email"], "username": u["email"],
-                                                        "role": u.get("role", "student"),
-                                                        "display": u.get("display", u["email"])}
+                            st.session_state["auth"] = {
+                                "email": u["email"], "username": u["email"],
+                                "role": u.get("role", "student"),
+                                "display": u.get("display", u["email"])
+                            }
                             st.success("เข้าสู่ระบบสำเร็จ")
                             st.rerun()
                         else:
                             st.error("รหัสผ่านไม่ถูกต้อง")
 
-    from textwrap import dedent  # ไว้บนไฟล์ ถ้ายังไม่ได้ import
-
-    # ===== Sign up Tab =====
-    with tabs[1]:
+    # =========================
+    # SIGN UP
+    # =========================
+    elif mode == "Sign up":
         student_email = st.text_input(f"อีเมลนักศึกษา (@{ALLOWED_EMAIL_DOMAIN})", key="auth_signup_email")
         pw1 = st.text_input("รหัสผ่าน", type="password", key="auth_signup_pw1")
         pw2 = st.text_input("ยืนยันรหัสผ่าน", type="password", key="auth_signup_pw2")
@@ -710,19 +726,14 @@ def do_login_form():
                 st.error("รหัสผ่านยืนยันไม่ตรงกัน")
             else:
                 existing = find_user_by_email(student_email)
-
-                # สร้างค่า hash/salt ไว้ใช้ทั้งสองกรณี (สมัครใหม่ หรือรีเซ็ตผู้ใช้ที่ยังไม่ verify)
                 salt = make_salt()
                 pw_hash = hash_password(pw1, salt)
 
                 if existing and existing.get("is_verified"):
-                    # กรณีมีผู้ใช้แล้วและยืนยันแล้วจริง
                     st.error("อีเมลนี้มีผู้ใช้งานแล้ว")
                 elif existing and not existing.get("is_verified"):
-                    # กรณีมีผู้ใช้ แต่ยังไม่ยืนยัน → อัปเดตรหัสผ่านใหม่ + ส่งลิงก์ยืนยันอีกครั้ง
                     existing["password_salt"] = salt
                     existing["password_hash"] = pw_hash
-                    # อัปเดตชื่อที่แสดง (ถ้ามี)
                     if display:
                         existing["display"] = display
                     upsert_user(existing)
@@ -739,7 +750,6 @@ def do_login_form():
                     หากคุณไม่ได้ส่งคำขอนี้ โปรดละเว้นอีเมลฉบับนี้
                     — MU Course Reviews
                     """)
-
                     ok = send_email(student_email, "ยืนยันอีเมลสำหรับลงทะเบียน (ส่งใหม่)", body)
                     if ok:
                         st.success("บัญชีนี้ยังไม่ยืนยัน — เราได้ส่งอีเมลยืนยันใหม่ให้แล้ว โปรดตรวจกล่องจดหมาย")
@@ -747,9 +757,7 @@ def do_login_form():
                         st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ยืนยันชั่วคราวด้านล่างได้เลย")
                         st.markdown(f"[คลิกเพื่อยืนยันบัญชี]({link})")
                         st.code(link)
-
                 else:
-                    # สมัครใหม่ (ยังไม่เคยมีผู้ใช้)
                     user = {
                         "email": student_email,
                         "password_salt": salt,
@@ -772,7 +780,6 @@ def do_login_form():
                     หากคุณไม่ได้ส่งคำขอนี้ โปรดละเว้นอีเมลฉบับนี้
                     — MU Course Reviews
                     """)
-
                     ok = send_email(student_email, "ยืนยันอีเมลสำหรับลงทะเบียน", body)
                     if ok:
                         st.success("สมัครเสร็จแล้ว! โปรดตรวจอีเมลเพื่อกดยืนยันก่อนเข้าสู่ระบบ")
@@ -781,21 +788,20 @@ def do_login_form():
                         st.markdown(f"[คลิกเพื่อยืนยันบัญชี]({link})")
                         st.code(link)
 
-    # ===== Forgot Password Tab =====
-    with tabs[2]:
-        # ถ้ามีพารามิเตอร์ ?reset=... → โหมดตั้งรหัสใหม่
+    # =========================
+    # FORGOT / RESET PASSWORD
+    # =========================
+    else:
         if reset_token:
             st.info("ตั้งรหัสผ่านใหม่สำหรับโทเคนรีเซ็ต")
             npw1 = st.text_input("รหัสผ่านใหม่", type="password", key="auth_reset_pw1")
             npw2 = st.text_input("ยืนยันรหัสผ่านใหม่", type="password", key="auth_reset_pw2")
-
             if st.button("ยืนยันการตั้งรหัสผ่านใหม่", key="auth_reset_submit"):
                 if not npw1 or len(npw1) < 6:
                     st.error("รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร")
                 elif npw1 != npw2:
                     st.error("รหัสผ่านยืนยันไม่ตรงกัน")
                 else:
-                    # หาโทเคนจาก storage ของคุณ (ใช้ชื่อฟังก์ชันที่มีอยู่จริงในโปรเจกต์)
                     tok = find_token(reset_token, "reset") if 'find_token' in globals() else get_token(reset_token)
                     if not tok or tok.get("used"):
                         st.error("โทเคนไม่ถูกต้องหรือถูกใช้ไปแล้ว")
@@ -812,14 +818,12 @@ def do_login_form():
                             if 'mark_token_used' in globals():
                                 mark_token_used(reset_token)
                             st.success("ตั้งรหัสผ่านใหม่สำเร็จ! โปรดเข้าสู่ระบบอีกครั้ง")
-                            # ล้าง query param ?reset=...
                             try:
                                 st.query_params.clear()
                             except Exception:
                                 st.experimental_set_query_params()
                             st.rerun()
         else:
-            # โหมดขอลิงก์รีเซ็ต
             reset_email = st.text_input(f"อีเมลนักศึกษา (@{ALLOWED_EMAIL_DOMAIN})", key="auth_reset_email")
             if st.button("ส่งลิงก์รีเซ็ตรหัสผ่าน", key="auth_reset_btn"):
                 if not reset_email or not reset_email.lower().endswith("@" + ALLOWED_EMAIL_DOMAIN):
@@ -829,7 +833,6 @@ def do_login_form():
                 else:
                     tok = add_token(reset_email, "reset", "")
                     link = make_link_with_param("reset", tok["token"])
-
                     body = dedent(f"""\
                     สวัสดี {reset_email},
 
@@ -839,17 +842,13 @@ def do_login_form():
                     หากคุณไม่ได้ร้องขอ โปรดละเว้นอีเมลฉบับนี้
                     — MU Course Reviews
                     """)
-
-                    ok = MAILER.send(reset_email, "ลิงก์รีเซ็ตรหัสผ่าน — MU Course Reviews", body) \
-                         if 'MAILER' in globals() else send_email(to=reset_email, subject="ลิงก์รีเซ็ตรหัสผ่าน — MU Course Reviews", body=body)
-
+                    ok = send_email(reset_email, "ลิงก์รีเซ็ตรหัสผ่าน — MU Course Reviews", body)
                     if ok:
                         st.success("ส่งลิงก์รีเซ็ตไปที่อีเมลแล้ว โปรดตรวจกล่องจดหมาย")
                     else:
                         st.warning("ส่งอีเมลไม่สำเร็จ — ใช้ลิงก์ชั่วคราวด้านล่าง")
+                        st.markdown(f"[คลิกเพื่อรีเซ็ตรหัสผ่าน]({link})")
                         st.code(link)
-
-
 
 # -----------------------------
 # Utilities
