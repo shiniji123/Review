@@ -955,7 +955,7 @@ def do_login_form():
                 else:
                     u = find_user_by_email(email_or_admin)
                     if not u:
-                        st.error("ไม่พบบัญชีผู้ใช้ — โปรดสมัครสมาชิกก่อน")
+                        st.error("ไม่พบบัญชีผู้ใช้ — โปรดลงทะเบียนก่อน")
                     elif not u.get("is_verified"):
                         st.warning("บัญชียังไม่ยืนยันอีเมล — โปรดตรวจกล่องจดหมายของคุณ")
                         if st.button("ส่งอีเมลยืนยันอีกครั้ง", key="auth_login_resend"):
@@ -996,7 +996,7 @@ def do_login_form():
         pw2 = st.text_input("ยืนยันรหัสผ่าน", type="password", key="auth_signup_pw2")
         display = st.text_input("ชื่อที่แสดง (ไม่บังคับ)", key="auth_signup_display")
 
-        if st.button("สมัครสมาชิก", key="auth_signup_btn"):
+        if st.button("ลงทะเบียน", key="auth_signup_btn"):
             if not student_email or not student_email.lower().endswith("@" + ALLOWED_EMAIL_DOMAIN):
                 st.error(f"ต้องใช้อีเมล @{ALLOWED_EMAIL_DOMAIN} เท่านั้น")
             elif not pw1 or len(pw1) < MIN_PASSWORD_LEN:
@@ -1324,6 +1324,7 @@ def page_student(data: Dict):
 
         if st.button("ส่งรีวิว (เข้าคิวรอตรวจ)", type="primary", use_container_width=True):
             auth = st.session_state.get("auth", {})
+            author_display = auth.get("display") or auth.get("email") or auth.get("username", "anonymous")
             new_r = {
                 "id": str(uuid.uuid4()),
                 "course_type": sel_type,  # <— ใหม่: ประเภทวิชา
@@ -1333,8 +1334,7 @@ def page_student(data: Dict):
                 "course_code": course["code"], "course_name": course["name"],
                 "rating": int(rating),
                 "text": (review_text or "").strip(),
-                "author": (st.session_state.get("auth", {}).get("email")
-                           or st.session_state.get("auth", {}).get("username", "anonymous")),
+                "author": author_display,
                 "created_at": datetime.now().isoformat(timespec="seconds"),
                 "status": "pending",
             }
