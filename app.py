@@ -715,8 +715,12 @@ def do_login_form():
     # =========================
     elif mode == "Sign up":
         student_email = st.text_input(f"อีเมลนักศึกษา (@{ALLOWED_EMAIL_DOMAIN})", key="auth_signup_email")
-        pw1 = st.text_input("รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)", type="password", key="auth_signup_pw1")
-        st.caption(f"รหัสผ่านต้องยาวอย่างน้อย {MIN_PASSWORD_LEN} ตัวอักษร")
+        pw1 = st.text_input(
+            "รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)",
+            type="password",
+            key="auth_signup_pw1",
+            help=f"รหัสผ่านต้องมีอย่างน้อย {MIN_PASSWORD_LEN} ตัวอักษร"
+        )
 
         pw2 = st.text_input("ยืนยันรหัสผ่าน", type="password", key="auth_signup_pw2")
         display = st.text_input("ชื่อที่แสดง (ไม่บังคับ)", key="auth_signup_display")
@@ -798,11 +802,13 @@ def do_login_form():
     else:
         if reset_token:
             st.info("ตั้งรหัสผ่านใหม่สำหรับโทเคนรีเซ็ต")
-            npw1 = st.text_input("รหัสผ่านใหม่", type="password", key="auth_reset_pw1")
+            npw1 = st.text_input("รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)", type="password", key="auth_reset_pw1")
+            st.caption(f"รหัสผ่านต้องยาวอย่างน้อย {MIN_PASSWORD_LEN} ตัวอักษร")
+
             npw2 = st.text_input("ยืนยันรหัสผ่านใหม่", type="password", key="auth_reset_pw2")
             if st.button("ยืนยันการตั้งรหัสผ่านใหม่", key="auth_reset_submit"):
-                if not npw1 or len(npw1) < 6:
-                    st.error("รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร")
+                if not npw1 or len(npw1) < MIN_PASSWORD_LEN:
+                    st.error(f"รหัสผ่านต้องยาวอย่างน้อย {MIN_PASSWORD_LEN} ตัวอักษร")
                 elif npw1 != npw2:
                     st.error("รหัสผ่านยืนยันไม่ตรงกัน")
                 else:
