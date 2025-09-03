@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 from textwrap import dedent
 
+
 """
 All-in-One Streamlit App (Student + Admin)
 - Auth (prototype): student1/1234, student2/1234, admin/admin
@@ -598,23 +599,39 @@ USERS_HEADERS = ["email", "password_salt", "password_hash", "role", "display", "
 TOKENS_HEADERS = ["token", "email", "type", "expires_at", "used", "created_at"]
 
 
-# ---- Extend storage to handle users/tokens ----
-class LocalJSONStorage(LocalJSONStorage):  # type: ignore[misc]
+# ---- LocalJSONStorage (drop-in; supports reviews + users + tokens) ----
+
+
+class LocalJSONStorage:
+    def __init__(self, path: str):
+        self.path = path
+        self._ensure()
+
     def _ensure(self):
+        # สร้างโฟลเดอร์/ไฟล์เริ่มต้น
+        base_dir = os.path.dirname(self.path)
+        if base_dir:
+            os.makedirs(base_dir, exist_ok=True)
         if not os.path.exists(self.path):
-            os.makedirs(os.path.dirname(self.path), exist_ok=True)
             with open(self.path, "w", encoding="utf-8") as f:
-                json.dump({"approved_reviews": [], "pending_reviews": [], "users": [], "tokens": []}, f,
-                          ensure_ascii=False, indent=2)
+                json.dump(
+                    {
+                        "pending_reviews": [],
+                        "approved_reviews": [],
+                        "users": [],
+                        "tokens": [],
+                    },
+                    f, ensure_ascii=False, indent=2
+                )
         else:
-            # ensure keys exist
+            # ให้แน่ใจว่ามีคีย์หลักครบ
             with open(self.path, "r", encoding="utf-8") as f:
                 try:
                     data = json.load(f)
                 except Exception:
-                    data = {"approved_reviews": [], "pending_reviews": []}
+                    data = {}
             changed = False
-            for k in ("users", "tokens"):
+            for k in ("pending_reviews", "approved_reviews", "users", "tokens"):
                 if k not in data:
                     data[k] = []
                     changed = True
@@ -622,29 +639,85 @@ class LocalJSONStorage(LocalJSONStorage):  # type: ignore[misc]
                 with open(self.path, "w", encoding="utf-8") as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
 
+    # ---------- file helpers ----------
+    def _read(self) -> Dict:
+        with open(self.path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def _write(self, data: Dict) -> None:
+        with open(self.path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    # ---------- reviews ----------
+    def load_data(self) -> Dict:
+        d = self._read()
+        # normalize type (กันกรณี rating/year เป็น string)
+        for bucket in ("pending_reviews", "approved_reviews"):
+            for r in d.get(bucket, []):
+                try:
+                    r["rating"] = int(r.get("rating", 0))
+                except Exception:
+                    r["rating"] = 0
+                try:
+                    r["year"] = int(r.get("year", 0)) if r.get("year") not in ("", None) else 0
+                except Exception:
+                    r["year"] = 0
+        return {
+            "pending_reviews": d.get("pending_reviews", []),
+            "approved_reviews": d.get("approved_reviews", []),
+        }
+
+    def save_data(self, data: Dict) -> None:
+        d = self._read()
+        d["pending_reviews"]  = data.get("pending_reviews", [])
+        d["approved_reviews"] = data.get("approved_reviews", [])
+        self._write(d)
+
+    # ---------- users ----------
     def load_users(self) -> List[Dict]:
-        with open(self.path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("users", [])
+        return self._read().get("users", [])
 
-    def save_users(self, users: List[Dict]) -> None:
-        with open(self.path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        data["users"] = users
-        with open(self.path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+    def upsert_user(self, user: Dict) -> None:
+        d = self._read()
+        users = d.get("users", [])
+        email = (user.get("email") or "").strip().lower()
+        idx = next((i for i, u in enumerate(users) if (u.get("email","").lower() == email)), -1)
+        if idx >= 0:
+            users[idx].update(user)
+        else:
+            users.append(user)
+        d["users"] = users
+        self._write(d)
 
+    # ---------- tokens (verify/reset) ----------
     def load_tokens(self) -> List[Dict]:
-        with open(self.path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("tokens", [])
+        return self._read().get("tokens", [])
 
-    def save_tokens(self, tokens: List[Dict]) -> None:
-        with open(self.path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        data["tokens"] = tokens
-        with open(self.path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+    def write_tokens(self, tokens: List[Dict]) -> None:
+        d = self._read()
+        d["tokens"] = tokens
+        self._write(d)
+
+    def add_token(self, token_row: Dict) -> None:
+        d = self._read()
+        d.setdefault("tokens", []).append(token_row)
+        self._write(d)
+
+    def mark_token_used(self, token: str) -> bool:
+        d = self._read()
+        tokens = d.get("tokens", [])
+        now = datetime.now().isoformat(timespec="seconds")
+        found = False
+        for t in tokens:
+            if t.get("token") == token and not t.get("used_at"):
+                t["used_at"] = now
+                found = True
+                break
+        if found:
+            d["tokens"] = tokens
+            self._write(d)
+        return found
+
 
 
 class GoogleSheetsStorage(GoogleSheetsStorage):  # type: ignore[misc]
