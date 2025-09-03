@@ -43,7 +43,7 @@ st.markdown("""
               "Helvetica Neue", Arial, "Noto Sans Thai", "Noto Sans", sans-serif;
 }
 
-html, body { font-size: 18px; }
+html, body { font-size: 20px; }
 
 /* บังคับทั้งแอป (ตัวอักษรไทย/อังกฤษในคอมโพเนนต์เกือบทั้งหมด) */
 html, body,
