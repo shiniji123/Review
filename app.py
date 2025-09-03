@@ -1785,7 +1785,7 @@ def header_bar():
     approved_cnt = len([r for r in data.get('approved_reviews', []) if r.get('status') == 'approved'])
     st.title(APP_TITLE)
     st.caption(
-        f"คิวรอตรวจ: {len(data.get('pending_reviews', []))} | อนุมัติแล้วสะสม: {approved_cnt}")
+        f"คิวรอตรวจ: {len(data.get('pending_reviews', []))} | อนุมัติแล้ว: {approved_cnt}")
     st.divider()
 
 # ===== Email helper (วางไว้ส่วน Utilities ก่อน do_login_form) =====
