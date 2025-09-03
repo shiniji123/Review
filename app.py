@@ -1241,40 +1241,36 @@ def page_student(data: Dict):
         )
         course = courses[course_ix]
 
-        # กล่องข้อมูลรายวิชา
-        st.markdown(
-            f"<div class='box'>"
-            f"<div><span class='codepill'>{course['code']}</span> <b>{course['name']}</b></div>"
-            f"<div class='muted'>ประเภท: {COURSE_TYPES[sel_type]} • คณะ: {fac_code} - {fac_name}</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-
-        # NEW: แสดง meta เพิ่มเติม (หน่วยกิต, วิธีตัดเกรด, วันอัปเดต)
+        # ✅ กล่องข้อมูลรายวิชา (รวม header + meta + คำอธิบาย ไว้ในกรอบเดียว)
         meta_bits = []
         if course.get("credit"):
             meta_bits.append(f"หน่วยกิต: {course['credit']}")
         if course.get("grading"):
-            # แสดงย่อ + คำอธิบายสั้นๆ (optional)
             label = {"ABC": "เกรด A–F", "OSU": "O/S/U"}.get(course["grading"], course["grading"])
             meta_bits.append(f"การตัดเกรด: {course['grading']} ({label})")
         if course.get("updated_at"):
             meta_bits.append(f"อัปเดตล่าสุด: {course['updated_at']}")
 
-        if meta_bits:
-            st.caption(" • ".join(meta_bits))
+        box_html = f"""
+        <div class='box'>
+          <div style="margin-bottom:.4rem;">
+            <span class='codepill'>{course['code']}</span> <b>{course['name']}</b>
+          </div>
+          <div class='muted' style="margin-bottom:.5rem;">
+            ประเภท: {COURSE_TYPES[sel_type]} • คณะ: {fac_code} - {fac_name}
+          </div>
+          {f'<div style="margin-bottom:.75rem;">' + ' • '.join(meta_bits) + '</div>' if meta_bits else ''}
 
-        # คำอธิบายรายวิชา (เหมือนเดิม)
-        if course.get("prereq"):
-            st.caption(f"เงื่อนไขรายวิชา: {course['prereq']}")
-        if course.get("desc_th"):
-            st.write(course["desc_th"])
-        if course.get("desc_en"):
-            st.markdown(f"<span class='muted'>{course['desc_en']}</span>", unsafe_allow_html=True)
+          {f'<div style="margin-bottom:.35rem;"><b>คำอธิบายรายวิชา (ภาษาไทย)</b></div>' if course.get('desc_th') else ''}
+          {f'<div style="margin-bottom:.6rem;">{course["desc_th"]}</div>' if course.get('desc_th') else ''}
 
-        if course.get("prereq"): st.caption(f"เงื่อนไขรายวิชา: {course['prereq']}")
-        if course.get("desc_th"): st.write(course["desc_th"])
-        if course.get("desc_en"): st.markdown(f"<span class='muted'>{course['desc_en']}</span>", unsafe_allow_html=True)
+          {f'<div style="margin-bottom:.35rem;"><b>คำอธิบายรายวิชา (ภาษาอังกฤษ)</b></div>' if course.get('desc_en') else ''}
+          {f'<div class="muted">{course["desc_en"]}</div>' if course.get('desc_en') else ''}
+
+          {f'<div class="muted" style="margin-top:.6rem;">เงื่อนไขรายวิชา: {course["prereq"]}</div>' if course.get('prereq') else ''}
+        </div>
+        """
+        st.markdown(box_html, unsafe_allow_html=True)
 
         st.markdown("---")
         col_rate, _ = st.columns([1, 2])
