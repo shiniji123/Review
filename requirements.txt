@@ -1,3 +1,4 @@
 streamlit>=1.49
 gspread==6.1.2
 google-auth==2.40.3
+altair>=4.2,<6
