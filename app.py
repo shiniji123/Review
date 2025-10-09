@@ -10,6 +10,8 @@ from collections import defaultdict, Counter
 from textwrap import dedent
 import pandas as pd
 import smtplib, ssl
+import altair as alt
+
 from email.message import EmailMessage
 
 # =============================
@@ -524,6 +526,10 @@ APP_BASE_URL = st.secrets.get("APP_BASE_URL", "")
 USERS_HEADERS = ["email", "password_salt", "password_hash", "role", "display", "is_verified", "created_at"]
 TOKENS_HEADERS = ["token", "email", "type", "expires_at", "used", "created_at"]
 
+# ========= Star histogram helpers =========
+from typing import Tuple
+
+
 def find_user_by_email(email: str) -> Optional[Dict]:
     users = load_users()
     for u in users:
@@ -638,6 +644,58 @@ def handle_magic_links():
 
 def star_str(n: int) -> str:
     n = int(n); return "★"*n + "☆"*(5-n)
+
+# ========= Star histogram helpers (Play Store/IMDb style) =========
+def build_star_hist_df(reviews: List[Dict]):
+    """
+    แปลงรายการรีวิว -> DataFrame ฮิสโตแกรมดาว + รวม + ค่าเฉลี่ย
+    คืนค่า: (df[ดาว,จำนวน] เรียง 5..1, total, avg)
+    """
+    hist = {i: 0 for i in range(1, 6)}
+    for r in reviews:
+        try:
+            rating = int(r.get("rating", 0))
+        except Exception:
+            rating = 0
+        if rating in hist:
+            hist[rating] += 1
+
+    total = sum(hist.values())
+    avg = (sum(k * v for k, v in hist.items()) / total) if total else 0.0
+    df = pd.DataFrame({
+        "ดาว": [5, 4, 3, 2, 1],
+        "จำนวน": [hist[i] for i in (5, 4, 3, 2, 1)]
+    })
+    return df, total, avg
+
+
+def render_star_histogram_altair(reviews: List[Dict], title: str):
+    """
+    วาดกราฟแท่งแนวนอน 5→1 ดาว + แสดงค่าเฉลี่ย/จำนวนรีวิว
+    """
+    df, total, avg = build_star_hist_df(reviews)
+
+    st.markdown(f"#### {title}")
+    left, right = st.columns([1, 2])
+
+    with left:
+        st.metric("คะแนนเฉลี่ย", f"{avg:.2f} / 5")
+        st.caption(f"จำนวนรีวิวทั้งหมด: {total}")
+        st.markdown(f"<span class='star'>{star_str(int(round(avg)))}</span>", unsafe_allow_html=True)
+
+    with right:
+        chart = (
+            alt.Chart(df)
+               .mark_bar()
+               .encode(
+                   y=alt.Y("ดาว:O", sort="descending", title="จำนวนดาว"),
+                   x=alt.X("จำนวน:Q", title="จำนวนรีวิว"),
+                   tooltip=["ดาว", "จำนวน"]
+               )
+               .properties(height=160)
+        )
+        st.altair_chart(chart, use_container_width=True)
+
 
 def sidebar_user_box():
     auth = st.session_state.get("auth")
@@ -1098,16 +1156,20 @@ def page_student(data: Dict):
         sf = admin_apply_filters(approved_only, sel_type2, sel_fac2, s_course, s_q, s_minr)
         sf = admin_sort_items(sf, s_sort)
 
-        # ⭐ กราฟแท่งสรุปดาว เมื่อเลือกวิชาเฉพาะเจาะจง
+        # ----- แสดงกราฟแนวโน้มรีวิว เมื่อเลือกวิชาเฉพาะ -----
         if s_course != "ทั้งหมด":
             code = s_course.split(" ")[0]
-            course_reviews = [r for r in sf if r.get("course_code")==code]
+            course_reviews = [r for r in sf if r.get("course_code") == code]
             if course_reviews:
-                st.markdown("#### สรุปคะแนนรีวิว (รายวิชาที่เลือก)")
-                df_hist = star_histogram(course_reviews)
-                avg = sum(int(r.get("rating",0)) for r in course_reviews)/len(course_reviews)
-                st.metric("ค่าเฉลี่ย", f"{avg:.2f} / 5", help="เฉลี่ยจากรีวิวที่อนุมัติแล้ว")
-                st.bar_chart(df_hist, use_container_width=True)
+                render_star_histogram_altair(course_reviews, title=f"สรุปแนวโน้มรีวิว — {s_course}")
+
+        # ⭐ กราฟแท่งสรุปดาว เมื่อเลือกวิชาเฉพาะเจาะจง
+        # ⭐ กราฟแท่งสรุปดาว (เมื่อเลือกวิชาเฉพาะเจาะจง)
+        if s_course != "ทั้งหมด":
+            code = s_course.split(" ")[0]
+            course_reviews = [r for r in sf if r.get("course_code") == code]
+            if course_reviews:
+                render_star_histogram_altair(course_reviews, title=f"สรุปคะแนนรีวิว — {s_course}")
 
         render_grouped_public(sf)
 
@@ -1222,8 +1284,8 @@ def page_admin(data: Dict):
         col1,col2,col3,col4 = st.columns([1,1,1,1.2])
         with col1:
             t_opts = admin_type_options(pending)
-            p_type = st.selectbox("ประเภท", t_opts, index=0, key="adm_p_type",
-                                  format_func=lambda v: "ทั้งหมด" if v=="ทั้งหมด" else v)
+            p_type = st.selectbox("ประเภท", t_opts, index=0, key="stu_a_type",
+                      format_func=lambda v: "ทั้งหมด" if v=="ทั้งหมด" else COURSE_TYPES.get(v, v))
             sel_type = None if p_type=="ทั้งหมด" else p_type
         with col2:
             fac_map = admin_faculty_map(pending, sel_type)
@@ -1271,6 +1333,13 @@ def page_admin(data: Dict):
 
         af = admin_apply_filters(approved, sel_type2, sel_fac2, a_course, a_q, a_minr)
         af = admin_sort_items(af, sort2)
+
+        # ----- แสดงกราฟแนวโน้มรีวิว เมื่อเลือกวิชาเฉพาะ -----
+        if a_course != "ทั้งหมด":
+            code = a_course.split(" ")[0]
+            course_reviews = [r for r in af if r.get("course_code") == code]
+            if course_reviews:
+                render_star_histogram_altair(course_reviews, title=f"สรุปแนวโน้มรีวิว — {a_course}")
 
         # โชว์ meta รายวิชา (จาก COURSE_LUT) + กราฟสรุปดาว
         if a_course != "ทั้งหมด":
