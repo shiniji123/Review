@@ -8,10 +8,15 @@ from functools import lru_cache
 from typing import Dict, List, Tuple, Optional
 from collections import defaultdict, Counter
 from textwrap import dedent
-import pandas as pd
 import smtplib, ssl
-import altair as alt
+# สำหรับกราฟ: ใช้ Altair ถ้ามี ไม่มีก็ fallback เป็น st.bar_chart
+try:
+    import altair as alt
+    ALTAIR_AVAILABLE = True
+except Exception:
+    ALTAIR_AVAILABLE = False
 
+import pandas as pd  # ให้แน่ใจว่ามี pandas ใช้สร้าง DataFrame สำหรับกราฟ
 from email.message import EmailMessage
 
 # =============================
@@ -645,6 +650,65 @@ def handle_magic_links():
 def star_str(n: int) -> str:
     n = int(n); return "★"*n + "☆"*(5-n)
 
+# =======================
+# Star-rating chart utils
+# =======================
+
+def build_star_hist(items):
+    """
+    รับรายการรีวิว (dict) ที่มี key 'rating'
+    คืนค่า: hist (dict: 5..1 -> count), total, avg(ค่าเฉลี่ย 1..5)
+    """
+    hist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    for r in items:
+        try:
+            n = int(r.get("rating", 0))
+        except Exception:
+            n = 0
+        if n in hist:
+            hist[n] += 1
+    total = sum(hist.values())
+    avg = (sum(star * cnt for star, cnt in hist.items()) / total) if total else 0.0
+    return hist, total, avg
+
+
+def render_star_histogram(hist, total, avg, title="สรุปแนวโน้มรีวิว"):
+    """
+    แสดงกราฟสรุปดาวแบบแนวนอนด้วย Altair (ถ้ามี)
+    ถ้าไม่มี Altair จะ fallback เป็น st.bar_chart (แนวตั้ง)
+    """
+    # เตรียมข้อมูล: 5→1 (อยากให้ 5 อยู่บนสุด)
+    df = pd.DataFrame({
+        "ดาว": [5, 4, 3, 2, 1],
+        "จำนวน": [hist[5], hist[4], hist[3], hist[2], hist[1]],
+    })
+
+    # หัวข้อ/สรุป
+    if title:
+        st.markdown(f"#### {title}")
+    st.caption(f"ค่าเฉลี่ย: **{avg:.2f}** จาก **{total}** รีวิว")
+
+    if ALTAIR_AVAILABLE:
+        chart = (
+            alt.Chart(df)
+              .mark_bar()
+              .encode(
+                  x=alt.X("จำนวน:Q", title="จำนวนรีวิว"),
+                  y=alt.Y("ดาว:O", sort="descending", title="เรตติ้ง (ดาว)"),
+                  tooltip=[alt.Tooltip("ดาว:O", title="ดาว"),
+                           alt.Tooltip("จำนวน:Q", title="จำนวน")]
+              )
+              .properties(height=180)
+        )
+        st.altair_chart(chart, use_container_width=True)
+    else:
+        # fallback เป็นกราฟแท่งแนวตั้ง
+        df2 = df.copy()
+        df2["label"] = df2["ดาว"].apply(lambda v: f"★{v}")
+        df2 = df2.set_index("label")[["จำนวน"]]
+        st.bar_chart(df2, use_container_width=True)
+
+
 # ========= Star histogram helpers (Play Store/IMDb style) =========
 def build_star_hist_df(reviews: List[Dict]):
     """
@@ -1156,21 +1220,14 @@ def page_student(data: Dict):
         sf = admin_apply_filters(approved_only, sel_type2, sel_fac2, s_course, s_q, s_minr)
         sf = admin_sort_items(sf, s_sort)
 
-        # ----- แสดงกราฟแนวโน้มรีวิว เมื่อเลือกวิชาเฉพาะ -----
+        # ----- วางบล็อกกราฟตรงนี้ -----
         if s_course != "ทั้งหมด":
-            code = s_course.split(" ")[0]
-            course_reviews = [r for r in sf if r.get("course_code") == code]
-            if course_reviews:
-                render_star_histogram_altair(course_reviews, title=f"สรุปแนวโน้มรีวิว — {s_course}")
+            # ตอนนี้ sf คือรีวิวของวิชาที่เลือกแล้ว
+            hist, total, avg = build_star_hist(sf)
+            if total > 0:
+                render_star_histogram(hist, total, avg, title=f"สรุปแนวโน้มรีวิว — {s_course}")
 
-        # ⭐ กราฟแท่งสรุปดาว เมื่อเลือกวิชาเฉพาะเจาะจง
-        # ⭐ กราฟแท่งสรุปดาว (เมื่อเลือกวิชาเฉพาะเจาะจง)
-        if s_course != "ทั้งหมด":
-            code = s_course.split(" ")[0]
-            course_reviews = [r for r in sf if r.get("course_code") == code]
-            if course_reviews:
-                render_star_histogram_altair(course_reviews, title=f"สรุปคะแนนรีวิว — {s_course}")
-
+        # แล้วค่อยแสดงการ์ด
         render_grouped_public(sf)
 
 # -----------------------------
