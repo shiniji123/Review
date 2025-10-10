@@ -654,59 +654,61 @@ def star_str(n: int) -> str:
 # Star-rating chart utils
 # =======================
 
-def build_star_hist(items):
+def build_star_hist(reviews: List[Dict]):
+    """คืนค่า (hist, total, avg)
+       hist: list ของ (ดาว, จำนวน) โดยเรียง 5→1
+       total: จำนวนรีวิวทั้งหมด
+       avg: ค่าเฉลี่ย 1–5
     """
-    รับรายการรีวิว (dict) ที่มี key 'rating'
-    คืนค่า: hist (dict: 5..1 -> count), total, avg(ค่าเฉลี่ย 1..5)
-    """
-    hist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
-    for r in items:
+    c = Counter()
+    for r in reviews:
         try:
-            n = int(r.get("rating", 0))
+            k = int(r.get("rating", 0))
         except Exception:
-            n = 0
-        if n in hist:
-            hist[n] += 1
-    total = sum(hist.values())
-    avg = (sum(star * cnt for star, cnt in hist.items()) / total) if total else 0.0
+            k = 0
+        if 1 <= k <= 5:
+            c[k] += 1
+    hist = [(s, c.get(s, 0)) for s in range(5, 1-1, -1)]
+    total = sum(cnt for _, cnt in hist)
+    avg = (sum(s * c.get(s, 0) for s in range(1, 6)) / total) if total else 0.0
     return hist, total, avg
 
 
-def render_star_histogram(hist, total, avg, title="สรุปแนวโน้มรีวิว"):
+def render_star_histogram(hist, total: int, avg: float, title: str = ""):
     """
-    แสดงกราฟสรุปดาวแบบแนวนอนด้วย Altair (ถ้ามี)
-    ถ้าไม่มี Altair จะ fallback เป็น st.bar_chart (แนวตั้ง)
+    วาดกราฟแท่งแนวนอนแบบ Play Store/IMDb (Altair)
+    - แกน Y: 5★ → 1★
+    - แกน X: เปอร์เซ็นต์
+    - แสดง tooltip และตัวเลขเปอร์เซ็นต์ตรงแท่ง
     """
-    # เตรียมข้อมูล: 5→1 (อยากให้ 5 อยู่บนสุด)
     df = pd.DataFrame({
-        "ดาว": [5, 4, 3, 2, 1],
-        "จำนวน": [hist[5], hist[4], hist[3], hist[2], hist[1]],
+        "stars": [s for s, _ in hist],           # 5..1
+        "count": [cnt for _, cnt in hist],
     })
+    if total == 0:
+        st.info("ยังไม่มีรีวิวเพียงพอสำหรับแสดงกราฟ")
+        return
+    df["percent"] = (df["count"] / total) * 100.0
 
-    # หัวข้อ/สรุป
-    if title:
-        st.markdown(f"#### {title}")
-    st.caption(f"ค่าเฉลี่ย: **{avg:.2f}** จาก **{total}** รีวิว")
+    base = alt.Chart(df).properties(title=title)
+    bars = base.mark_bar().encode(
+        y=alt.Y("stars:O", sort="descending", title="คะแนน"),
+        x=alt.X("percent:Q", title="เปอร์เซ็นต์"),
+        tooltip=[
+            alt.Tooltip("stars:O", title="ดาว"),
+            alt.Tooltip("count:Q", title="จำนวนรีวิว"),
+            alt.Tooltip("percent:Q", title="เปอร์เซ็นต์", format=".1f")
+        ]
+    )
+    texts = base.mark_text(align="left", dx=4).encode(
+        y=alt.Y("stars:O", sort="descending"),
+        x=alt.X("percent:Q"),
+        text=alt.Text("percent:Q", format=".1f")
+    )
 
-    if ALTAIR_AVAILABLE:
-        chart = (
-            alt.Chart(df)
-              .mark_bar()
-              .encode(
-                  x=alt.X("จำนวน:Q", title="จำนวนรีวิว"),
-                  y=alt.Y("ดาว:O", sort="descending", title="เรตติ้ง (ดาว)"),
-                  tooltip=[alt.Tooltip("ดาว:O", title="ดาว"),
-                           alt.Tooltip("จำนวน:Q", title="จำนวน")]
-              )
-              .properties(height=180)
-        )
-        st.altair_chart(chart, use_container_width=True)
-    else:
-        # fallback เป็นกราฟแท่งแนวตั้ง
-        df2 = df.copy()
-        df2["label"] = df2["ดาว"].apply(lambda v: f"★{v}")
-        df2 = df2.set_index("label")[["จำนวน"]]
-        st.bar_chart(df2, use_container_width=True)
+    st.markdown(f"**ค่าเฉลี่ย:** {avg:.2f} / 5  •  **ทั้งหมด:** {total} รีวิว")
+    st.altair_chart(bars + texts, use_container_width=True)
+
 
 
 # ========= Star histogram helpers (Play Store/IMDb style) =========
@@ -1221,11 +1223,22 @@ def page_student(data: Dict):
         sf = admin_sort_items(sf, s_sort)
 
         # ----- วางบล็อกกราฟตรงนี้ -----
+        # ----- แสดงกราฟสรุปดาว -----
+        # ถ้าเลือกวิชาเฉพาะ จะสรุปเฉพาะวิชานั้น
+        # ถ้า "ทั้งหมด" จะสรุปภาพรวมตามตัวกรองปัจจุบัน
         if s_course != "ทั้งหมด":
-            # ตอนนี้ sf คือรีวิวของวิชาที่เลือกแล้ว
-            hist, total, avg = build_star_hist(sf)
-            if total > 0:
-                render_star_histogram(hist, total, avg, title=f"สรุปแนวโน้มรีวิว — {s_course}")
+            code = s_course.split(" ")[0]
+            dataset = [r for r in sf if r.get("course_code") == code]
+            title = f"สรุปแนวโน้มรีวิว — {s_course}"
+        else:
+            dataset = list(sf)
+            title = "สรุปแนวโน้มรีวิว — ตามตัวกรองปัจจุบัน"
+
+        hist, total, avg = build_star_hist(dataset)
+        if total > 0:
+            render_star_histogram(hist, total, avg, title=title)
+        else:
+            st.info("ยังไม่มีรีวิวสำหรับแสดงกราฟในเงื่อนไขนี้")
 
         # แล้วค่อยแสดงการ์ด
         render_grouped_public(sf)
