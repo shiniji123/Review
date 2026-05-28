@@ -1,8 +1,12 @@
 # MU Review Course
 
-เว็บไซต์รีวิวรายวิชามหาวิทยาลัยมหิดล สร้างด้วย Streamlit สำหรับให้นักศึกษาเลือกหมวดรายวิชา คณะ และรายวิชา แล้วส่งรีวิวพร้อมคะแนน ส่วนผู้ดูแลระบบสามารถตรวจสอบ อนุมัติ ปฏิเสธ กรองข้อมูล และส่งออกข้อมูลรีวิวได้
+MU Review Course is a Streamlit web application for Mahidol University course reviews. Students can browse courses by category, faculty, and course, submit star-rated reviews, and view approved reviews. Admin users can moderate submissions, filter review queues, summarize ratings, and export review data.
 
-> เวอร์ชันล่าสุดของแอปอยู่ที่ `app_2.py`
+The latest application entry point is:
+
+```text
+app_2.py
+```
 
 ## Live Demo
 
@@ -10,76 +14,79 @@
 
 ## Screenshot
 
-![MU Review Course screenshot](docs/images/mu-course-review.png)
+![MU Review Course student review form](docs/images/mu-course-review.png)
 
-## Features
+## Key Features
 
-- ระบบเข้าสู่ระบบ สมัครสมาชิก ยืนยันอีเมล และลืมรหัสผ่าน
-- แยกบทบาทผู้ใช้เป็น `student` และ `admin`
-- นักศึกษาส่งรีวิวรายวิชาพร้อมคะแนน 1-5 ดาว
-- เลือกรายวิชาตามโครงสร้าง ประเภทวิชา -> คณะ -> รายวิชา
-- แสดงรีวิวที่ผ่านการอนุมัติ พร้อมตัวกรองและการจัดเรียง
-- ผู้ดูแลระบบตรวจคิวรีวิว อนุมัติหรือปฏิเสธเป็นรายรายการหรือหลายรายการ
-- ตารางสรุปภาพรวม เช่น ค่าเฉลี่ยคะแนนและจำนวนรีวิวต่อรายวิชา
-- ส่งออกข้อมูลรีวิวเป็น CSV และ JSON
-- รองรับการเก็บข้อมูลแบบ local JSON หรือ Google Sheets
+- Student login, sign-up, email verification, and password reset flows
+- Role-based access for student and admin users
+- Course selection by course type, faculty, and course
+- Review submission with 1-5 star ratings
+- Approved-review browsing with search, filtering, sorting, and rating summaries
+- Admin moderation for pending reviews, including approve and reject actions
+- Bulk moderation for filtered pending reviews
+- Summary table with average rating and review count by course
+- CSV export for approved reviews
+- JSON export for the full review database
+- Local JSON storage for development
+- Optional Google Sheets storage for deployment
 
 ## Tech Stack
 
 - Python
 - Streamlit
 - Pandas
-- Google Sheets API ผ่าน `gspread`
+- gspread
 - Google Auth
-- SMTP สำหรับอีเมลยืนยันบัญชีและรีเซ็ตรหัสผ่าน
+- SMTP email integration
 
-## Project Structure
+## Repository Structure
 
 ```text
 .
-├── app_2.py                 # เวอร์ชันล่าสุดของแอป
-├── app.py                   # เวอร์ชันก่อนหน้า
-├── requirements.txt         # Python dependencies
-├── data/
-│   └── data.json            # local JSON storage สำหรับทดลองรัน
-└── docs/
-    └── images/
-        └── mu-course-review.png
+|-- app_2.py                 # Latest Streamlit app version
+|-- app.py                   # Previous app version
+|-- requirements.txt         # Python dependencies
+|-- data/
+|   `-- data.json            # Local JSON database for development
+`-- docs/
+    `-- images/
+        `-- mu-course-review.png
 ```
 
 ## Getting Started
 
-ติดตั้ง dependencies:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-รันแอปเวอร์ชันล่าสุด:
+Run the latest app:
 
 ```bash
 streamlit run app_2.py
 ```
 
-จากนั้นเปิดเว็บที่ Streamlit แสดงใน terminal โดยปกติคือ:
+Streamlit will show a local URL in the terminal, usually:
 
 ```text
 http://localhost:8501
 ```
 
-## Local Storage Mode
+## Local Storage
 
-ถ้าไม่ได้ตั้งค่า secrets ระบบจะใช้ local JSON เป็นค่าเริ่มต้น โดยอ่านและเขียนข้อมูลที่:
+By default, the app uses local JSON storage when no Streamlit secrets are configured.
 
 ```text
 data/data.json
 ```
 
-เหมาะสำหรับการทดสอบในเครื่องหรือ demo แบบง่าย
+This mode is useful for local development and quick demos.
 
-## Google Sheets Mode
+## Google Sheets Storage
 
-สำหรับใช้งานจริง สามารถตั้งค่า Streamlit secrets เพื่อให้ Google Sheets เป็นฐานข้อมูลได้:
+For a deployed app, set Streamlit secrets to use Google Sheets as the database:
 
 ```toml
 STORAGE_BACKEND = "gsheets"
@@ -98,11 +105,13 @@ auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
 client_x509_cert_url = "..."
 ```
 
-ใน Google Sheet ควรแชร์สิทธิ์ Editor ให้ `client_email` ของ service account ด้วย
+Make sure the Google Sheet is shared with the service account `client_email` as an editor.
 
-## Email / SMTP Secrets
+The app creates or uses worksheets for pending reviews, approved reviews, users, and tokens.
 
-ถ้าต้องการเปิดใช้การส่งอีเมลสำหรับยืนยันบัญชีและรีเซ็ตรหัสผ่าน ให้ตั้งค่าเพิ่ม:
+## Email Configuration
+
+To enable email verification and password reset emails, add SMTP settings to Streamlit secrets:
 
 ```toml
 SMTP_HOST = "smtp.example.com"
@@ -114,9 +123,9 @@ SMTP_SENDER_NAME = "MU Course Reviews"
 SMTP_SSL = false
 ```
 
-## Example Local Accounts
+## Demo Accounts
 
-สำหรับโหมดทดลองใน `app_2.py` มีบัญชีเริ่มต้น:
+The local prototype accounts in `app_2.py` are:
 
 ```text
 student1 / 1234
@@ -124,14 +133,14 @@ student2 / 1234
 admin / admin
 ```
 
-ควรเปลี่ยนระบบบัญชีและรหัสผ่านก่อนใช้งานจริง
+Replace these accounts or move account management fully into your storage backend before production use.
 
 ## Deployment
 
-ถ้า deploy บน Streamlit Community Cloud ให้ตั้งค่า entry point เป็น:
+When deploying to Streamlit Community Cloud, set the app file to:
 
 ```text
 app_2.py
 ```
 
-แล้วเพิ่ม secrets ตามโหมดที่ต้องการใช้งานในหน้า Settings ของแอป
+Then add the required secrets for Google Sheets and SMTP in the app settings.
